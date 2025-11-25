@@ -7,8 +7,9 @@ import InputFloating from "../../../../Components/InputFloating";
 import { router, usePage } from "@inertiajs/react";
 
 const ReallocateBudgetForm = () => {
-    const { auth } = usePage().props;
+    const { budgetRequestId, auth } = usePage().props;
     const user_id = auth.user.id;
+    const isEditMode = !!budgetRequestId;
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -32,16 +33,30 @@ const ReallocateBudgetForm = () => {
     const [currentAvailableBudget, setCurrentAvailableBudget] = useState(null);
     const [destinationAvailableBudget, setDestinationAvailableBudget] = useState(null);
     const [tempAttachment, setTempAttachment] = useState(null);
+    const [existingAttachment, setExistingAttachment] = useState(null);
     const [uploadError, setUploadError] = useState("");
+    const [originalReallocationData, setOriginalReallocationData] = useState(null);
+    const [originalReallocateAmount, setOriginalReallocateAmount] = useState(null);
     const fileInputRef = React.useRef();
 
     useEffect(() => {
-        fetchInitialData();
-    }, []);
+        const initializeData = async () => {
+            await fetchInitialData();
+            if (isEditMode) {
+                await fetchReallocationRequest();
+            }
+        };
+        
+        initializeData();
+    }, [budgetRequestId]);
 
-    // Fetch departments when budget is selected
+
+    // Track if we're initializing edit mode to prevent useEffect hooks from running
+    const [isInitializingEdit, setIsInitializingEdit] = useState(false);
+
+    // Fetch departments when budget is selected (only in create mode)
     useEffect(() => {
-        if (formData.fiscal_period_id) {
+        if (!isEditMode && !isInitializingEdit && formData.fiscal_period_id) {
             fetchDepartments();
             // Reset dependent fields
             setFormData(prev => ({
@@ -56,11 +71,11 @@ const ReallocateBudgetForm = () => {
             setReallocateSubCostCenters([]);
             setCurrentAvailableBudget(null);
         }
-    }, [formData.fiscal_period_id]);
+    }, [formData.fiscal_period_id, isEditMode, isInitializingEdit]);
 
-    // Fetch cost centers when department is selected
+    // Fetch cost centers when department is selected (only in create mode)
     useEffect(() => {
-        if (formData.fiscal_period_id && formData.department_id) {
+        if (!isEditMode && !isInitializingEdit && formData.fiscal_period_id && formData.department_id) {
             fetchCostCenters();
             // Reset dependent fields
             setFormData(prev => ({
@@ -73,11 +88,11 @@ const ReallocateBudgetForm = () => {
             setReallocateSubCostCenters([]);
             setCurrentAvailableBudget(null);
         }
-    }, [formData.fiscal_period_id, formData.department_id]);
+    }, [formData.fiscal_period_id, formData.department_id, isEditMode, isInitializingEdit]);
 
-    // Fetch sub cost centers when cost center is selected
+    // Fetch sub cost centers when cost center is selected (only in create mode)
     useEffect(() => {
-        if (formData.fiscal_period_id && formData.department_id && formData.cost_center_id) {
+        if (!isEditMode && !isInitializingEdit && formData.fiscal_period_id && formData.department_id && formData.cost_center_id) {
             fetchSubCostCenters();
             // Reset dependent fields
             setFormData(prev => ({
@@ -88,11 +103,11 @@ const ReallocateBudgetForm = () => {
             setReallocateSubCostCenters([]);
             setCurrentAvailableBudget(null);
         }
-    }, [formData.fiscal_period_id, formData.department_id, formData.cost_center_id]);
+    }, [formData.fiscal_period_id, formData.department_id, formData.cost_center_id, isEditMode, isInitializingEdit]);
 
-    // Fetch current available budget and reallocate sub cost centers when sub cost center is selected
+    // Fetch current available budget and reallocate sub cost centers when sub cost center is selected (only in create mode)
     useEffect(() => {
-        if (formData.fiscal_period_id && formData.department_id && formData.cost_center_id && formData.sub_cost_center) {
+        if (!isEditMode && !isInitializingEdit && formData.fiscal_period_id && formData.department_id && formData.cost_center_id && formData.sub_cost_center) {
             fetchCurrentAvailableBudget();
             fetchReallocateSubCostCenters();
             setFormData(prev => ({
@@ -101,14 +116,17 @@ const ReallocateBudgetForm = () => {
             }));
             setDestinationAvailableBudget(null);
         }
-    }, [formData.fiscal_period_id, formData.department_id, formData.cost_center_id, formData.sub_cost_center]);
+    }, [formData.fiscal_period_id, formData.department_id, formData.cost_center_id, formData.sub_cost_center, isEditMode, isInitializingEdit]);
 
-    // Fetch destination available budget when reallocate sub cost center is selected
+    // Fetch destination available budget when reallocate sub cost center is selected (only in create mode)
     useEffect(() => {
-        if (formData.fiscal_period_id && formData.department_id && formData.cost_center_id && formData.reallocate_sub_cost_center) {
+        if (!isEditMode && !isInitializingEdit && formData.fiscal_period_id && formData.department_id && formData.cost_center_id && formData.reallocate_sub_cost_center) {
             fetchDestinationAvailableBudget();
         }
-    }, [formData.fiscal_period_id, formData.department_id, formData.cost_center_id, formData.reallocate_sub_cost_center]);
+    }, [formData.fiscal_period_id, formData.department_id, formData.cost_center_id, formData.reallocate_sub_cost_center, isEditMode, isInitializingEdit]);
+
+    // Note: Removed real-time budget recalculation in edit mode
+    // Budgets are calculated once when the form loads and don't update until saved
 
     // Function to fetch all pages of data
     const fetchAllPages = async (endpoint, params = {}) => {
@@ -157,6 +175,180 @@ const ReallocateBudgetForm = () => {
             setErrors((prev) => ({
                 ...prev,
                 fetchError: "Failed to load necessary data. Please refresh and try again.",
+            }));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchReallocationRequest = async () => {
+        setIsInitializingEdit(true);
+        setLoading(true);
+        try {
+            const response = await axios.get(
+                `/api/v1/request-budgets/${budgetRequestId}?include=fiscalPeriod,department,costCenter,subCostCenter,reallocateToSubCostCenter,reallocationHistory`
+            );
+            const reallocationRequest = response.data.data;
+
+            // Store original data for use in submit
+            setOriginalReallocationData(reallocationRequest);
+
+            // Store values for use in fetch functions (before state update)
+            // Convert to strings to match SelectFloating component expectations
+            const fiscalPeriodId = reallocationRequest.fiscal_period_id ? String(reallocationRequest.fiscal_period_id) : "";
+            const departmentId = reallocationRequest.department_id ? String(reallocationRequest.department_id) : "";
+            const costCenterId = reallocationRequest.cost_center_id ? String(reallocationRequest.cost_center_id) : "";
+            const subCostCenter = reallocationRequest.sub_cost_center ? String(reallocationRequest.sub_cost_center) : "";
+            const reallocateSubCostCenter = reallocationRequest.reallocate_to_sub_cost_center ? String(reallocationRequest.reallocate_to_sub_cost_center) : "";
+            
+            // Get reallocate_amount from history if available (preserves original value even after approval)
+            const reallocateAmount = reallocationRequest.reallocation_history?.reallocate_amount 
+                || reallocationRequest.reallocate_amount 
+                || "";
+            
+            // Store original reallocate amount for comparison
+            setOriginalReallocateAmount(parseFloat(reallocateAmount) || 0);
+
+            // Populate form data
+            setFormData({
+                fiscal_period_id: fiscalPeriodId,
+                department_id: departmentId,
+                cost_center_id: costCenterId,
+                sub_cost_center: subCostCenter,
+                reallocate_sub_cost_center: reallocateSubCostCenter,
+                reallocate_amount: reallocateAmount,
+                reason_for_increase: reallocationRequest.reason_for_increase || "",
+                attachment: null,
+            });
+
+            // Handle existing attachment
+            if (reallocationRequest.attachment_path) {
+                const attachmentData = {
+                    file_path: reallocationRequest.attachment_path,
+                    original_name: reallocationRequest.original_name || reallocationRequest.attachment_path.split('/').pop() || 'Document'
+                };
+                setExistingAttachment(attachmentData);
+            } else {
+                setExistingAttachment(null);
+            }
+
+            // Use the department from the API response (only need the selected one for edit mode)
+            if (reallocationRequest.department) {
+                setDepartments([reallocationRequest.department]);
+            }
+
+            // Use the cost center from the API response (only need the selected one for edit mode)
+            if (reallocationRequest.cost_center) {
+                setCostCenters([reallocationRequest.cost_center]);
+            }
+
+            // Use the sub cost center from the API response (only need the selected one for edit mode)
+            if (reallocationRequest.sub_cost_center_details) {
+                setSubCostCenters([reallocationRequest.sub_cost_center_details]);
+            }
+
+            if (costCenterId) {
+                // For "Move To" dropdown, we need all sub cost centers in the same cost center (excluding the source)
+                // This is the only list we need to fetch for edit mode
+                if (subCostCenter) {
+                    // Fetch sub cost centers - only fetch what we need for the "Move To" dropdown
+                    const subCostCenterBudgets = await fetchAllPages("/api/v1/request-budgets", {
+                        "filter[fiscal_period_id]": fiscalPeriodId,
+                        "filter[department_id]": departmentId,
+                        "filter[cost_center_id]": costCenterId,
+                        "filter[status]": "Approved",
+                        include: "subCostCenter",
+                    });
+                    
+                    // Process for "Move To" sub cost centers (exclude the selected "Move From" sub cost center)
+                    const uniqueReallocateSubCostCenters = [];
+                    const reallocateSubCostCenterMap = new Map();
+                    subCostCenterBudgets.forEach((budget) => {
+                        if (budget.sub_cost_center_details && budget.sub_cost_center_details.id && 
+                            String(budget.sub_cost_center_details.id) !== subCostCenter && 
+                            !reallocateSubCostCenterMap.has(budget.sub_cost_center_details.id)) {
+                            reallocateSubCostCenterMap.set(budget.sub_cost_center_details.id, budget.sub_cost_center_details);
+                            uniqueReallocateSubCostCenters.push(budget.sub_cost_center_details);
+                        }
+                    });
+                    setReallocateSubCostCenters(uniqueReallocateSubCostCenters);
+
+                    // Use source_new_balance and destination_new_balance from history record
+                    if (reallocationRequest.reallocation_history) {
+                        const history = reallocationRequest.reallocation_history;
+                        
+                        // Set source available budget from source_new_balance
+                        if (history.source_new_balance !== null && history.source_new_balance !== undefined) {
+                            setCurrentAvailableBudget(parseFloat(history.source_new_balance) || 0);
+                        } else {
+                            setCurrentAvailableBudget(0);
+                        }
+                        
+                        // Set destination available budget from destination_new_balance
+                        if (reallocateSubCostCenter) {
+                            if (history.destination_new_balance !== null && history.destination_new_balance !== undefined) {
+                                setDestinationAvailableBudget(parseFloat(history.destination_new_balance) || 0);
+                            } else {
+                                setDestinationAvailableBudget(0);
+                            }
+                        }
+                    } else {
+                        // Fallback: if no history record, fetch current budgets
+                        if (subCostCenter) {
+                            const [sourceBudgetResponse, destBudgetResponse] = await Promise.all([
+                                axios.get("/api/v1/request-budgets", {
+                                    params: {
+                                        "filter[fiscal_period_id]": fiscalPeriodId,
+                                        "filter[department_id]": departmentId,
+                                        "filter[cost_center_id]": costCenterId,
+                                        "filter[sub_cost_center]": subCostCenter,
+                                        "filter[status]": "Approved",
+                                        per_page: 1,
+                                    },
+                                }),
+                                reallocateSubCostCenter ? axios.get("/api/v1/request-budgets", {
+                                    params: {
+                                        "filter[fiscal_period_id]": fiscalPeriodId,
+                                        "filter[department_id]": departmentId,
+                                        "filter[cost_center_id]": costCenterId,
+                                        "filter[sub_cost_center]": reallocateSubCostCenter,
+                                        "filter[status]": "Approved",
+                                        per_page: 1,
+                                    },
+                                }) : Promise.resolve({ data: { data: [] } })
+                            ]);
+                            
+                            // Fallback calculation
+                            if (sourceBudgetResponse.data.data && sourceBudgetResponse.data.data.length > 0) {
+                                const budget = sourceBudgetResponse.data.data[0];
+                                setCurrentAvailableBudget(parseFloat(budget.balance_amount) || 0);
+                            } else {
+                                setCurrentAvailableBudget(0);
+                            }
+
+                            if (reallocateSubCostCenter && destBudgetResponse.data.data && destBudgetResponse.data.data.length > 0) {
+                                const destBudget = destBudgetResponse.data.data[0];
+                                setDestinationAvailableBudget(parseFloat(destBudget.balance_amount) || 0);
+                            } else if (reallocateSubCostCenter) {
+                                setDestinationAvailableBudget(0);
+                            }
+                        }
+                    }
+                }
+            }
+
+            setIsInitializingEdit(false); // Allow useEffect hooks to run again after initialization
+            setDataLoaded(true);
+        } catch (error) {
+            console.error("=== ERROR FETCHING REALLOCATION REQUEST ===", error);
+            console.error("Error details:", {
+                message: error.message,
+                response: error.response?.data,
+                stack: error.stack,
+            });
+            setErrors((prev) => ({
+                ...prev,
+                fetchError: "Failed to load reallocation request data.",
             }));
         } finally {
             setLoading(false);
@@ -329,6 +521,18 @@ const ReallocateBudgetForm = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        
+        // Prevent editing restricted fields in edit mode
+        if (isEditMode && [
+            'fiscal_period_id',
+            'department_id',
+            'cost_center_id',
+            'sub_cost_center',
+            'reallocate_sub_cost_center'
+        ].includes(name)) {
+            return;
+        }
+        
         setFormData((prev) => ({
             ...prev,
             [name]: value,
@@ -390,8 +594,10 @@ const ReallocateBudgetForm = () => {
             }
         }
 
-        // Check for attachment
-        if (!tempAttachment) {
+        // Check for attachment (only required in create mode, or if no existing attachment in edit mode)
+        if (!isEditMode && !tempAttachment) {
+            newErrors.attachment = "Attachment is required";
+        } else if (isEditMode && !tempAttachment && !existingAttachment) {
             newErrors.attachment = "Attachment is required";
         }
 
@@ -425,7 +631,6 @@ const ReallocateBudgetForm = () => {
         setIsSubmitting(true);
 
         try {
-            // Create reallocation request
             const submitData = {
                 fiscal_period_id: formData.fiscal_period_id,
                 department_id: formData.department_id,
@@ -434,110 +639,175 @@ const ReallocateBudgetForm = () => {
                 reallocate_to_sub_cost_center: formData.reallocate_sub_cost_center,
                 reallocate_amount: parseFloat(formData.reallocate_amount),
                 reason_for_increase: formData.reason_for_increase,
-                status: "Draft",
                 type: "reallocation",
             };
 
-            const response = await axios.post("/api/v1/request-budgets", submitData);
-            const reallocationId = response.data.data?.id;
+            let reallocationId;
 
-            if (!reallocationId) {
-                setErrors({
-                    submit: "Failed to create reallocation request. No ID was returned.",
+            if (isEditMode) {
+                // Update existing reallocation request
+                // Include all required fields from the original data
+                submitData.status = originalReallocationData?.status || "Draft";
+                submitData.previous_year_budget_amount = parseFloat(originalReallocationData?.previous_year_budget_amount) || 0;
+                submitData.requested_amount = parseFloat(originalReallocationData?.requested_amount) || 0;
+                submitData.revenue_planned = parseFloat(originalReallocationData?.revenue_planned) || 0;
+                submitData.urgency = originalReallocationData?.urgency || "Low";
+                submitData.previous_year_revenue = originalReallocationData?.previous_year_revenue ? parseFloat(originalReallocationData.previous_year_revenue) : null;
+                submitData.current_year_revenue = originalReallocationData?.current_year_revenue ? parseFloat(originalReallocationData.current_year_revenue) : null;
+                submitData.approved_amount = originalReallocationData?.approved_amount ? parseFloat(originalReallocationData.approved_amount) : null;
+                submitData.reserved_amount = originalReallocationData?.reserved_amount ? parseFloat(originalReallocationData.reserved_amount) : null;
+                submitData.consumed_amount = originalReallocationData?.consumed_amount ? parseFloat(originalReallocationData.consumed_amount) : null;
+                submitData.balance_amount = originalReallocationData?.balance_amount ? parseFloat(originalReallocationData.balance_amount) : null;
+                
+                // Log what fields are being updated
+                console.log('=== BUDGET REALLOCATE UPDATE ===', {
+                    request_id: budgetRequestId,
+                    fields_updated: {
+                        reallocate_amount: {
+                            old: originalReallocateAmount,
+                            new: submitData.reallocate_amount,
+                            changed: originalReallocateAmount !== submitData.reallocate_amount
+                        },
+                        reason_for_increase: {
+                            old: originalReallocationData?.reason_for_increase || '',
+                            new: submitData.reason_for_increase,
+                            changed: (originalReallocationData?.reason_for_increase || '') !== submitData.reason_for_increase
+                        }
+                    },
+                    fields_not_updated: {
+                        fiscal_period_id: submitData.fiscal_period_id,
+                        department_id: submitData.department_id,
+                        cost_center_id: submitData.cost_center_id,
+                        sub_cost_center: submitData.sub_cost_center,
+                        reallocate_to_sub_cost_center: submitData.reallocate_to_sub_cost_center,
+                        previous_year_budget_amount: submitData.previous_year_budget_amount,
+                        requested_amount: submitData.requested_amount,
+                        revenue_planned: submitData.revenue_planned,
+                        urgency: submitData.urgency,
+                        status: submitData.status
+                    },
+                    full_payload: submitData
                 });
-                setIsSubmitting(false);
-                return;
-            }
+                
+                const response = await axios.put(`/api/v1/request-budgets/${budgetRequestId}`, submitData);
+                reallocationId = response.data.data?.id || budgetRequestId;
 
-            // Upload attachment if provided
-            if (tempAttachment) {
-                const uploadSuccess = await uploadAttachmentToServer(reallocationId, tempAttachment);
-                if (!uploadSuccess) {
+                if (!reallocationId) {
                     setErrors({
-                        submit: "Failed to upload attachment. Please try again.",
+                        submit: "Failed to update reallocation request.",
                     });
                     setIsSubmitting(false);
                     return;
                 }
-                if (fileInputRef.current) fileInputRef.current.value = "";
-            }
 
-            // Get the approval process and create approval transaction and task
-            console.log('Fetching approval process...');
-            const processResponse = await axios.get(
-                "/api/v1/processes?include=steps,creator,updater&filter[title]=Budget Reallocate Approval"
-            );
-            console.log('Process Response:', processResponse.data);
-            
-            const process = processResponse.data?.data?.[0];
-            let processSteps = process?.steps || [];
+                // Upload new attachment if provided
+                if (tempAttachment) {
+                    const uploadSuccess = await uploadAttachmentToServer(reallocationId, tempAttachment);
+                    if (!uploadSuccess) {
+                        setErrors({
+                            submit: "Failed to upload attachment. Please try again.",
+                        });
+                        setIsSubmitting(false);
+                        return;
+                    }
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                }
 
-            // Check if process and steps exist
-            if (!process || processSteps.length === 0) {
-                console.error('No Process or steps found');
-                setErrors({
-                    submit: "No Process or steps found for Budget Reallocate Approval",
-                });
-                setIsSubmitting(false);
+                // Success - redirect back to list
+                router.visit('/request-budgets');
                 return;
+            } else {
+                // Create new reallocation request
+                submitData.status = "Draft";
+                const response = await axios.post("/api/v1/request-budgets", submitData);
+                reallocationId = response.data.data?.id;
+
+                if (!reallocationId) {
+                    setErrors({
+                        submit: "Failed to create reallocation request. No ID was returned.",
+                    });
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                // Upload attachment if provided
+                if (tempAttachment) {
+                    const uploadSuccess = await uploadAttachmentToServer(reallocationId, tempAttachment);
+                    if (!uploadSuccess) {
+                        setErrors({
+                            submit: "Failed to upload attachment. Please try again.",
+                        });
+                        setIsSubmitting(false);
+                        return;
+                    }
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                }
+
+                // Get the approval process and create approval transaction and task
+                const processResponse = await axios.get(
+                    "/api/v1/processes?include=steps,creator,updater&filter[title]=Budget Reallocate Approval"
+                );
+                
+                const process = processResponse.data?.data?.[0];
+                let processSteps = process?.steps || [];
+
+                // Check if process and steps exist
+                if (!process || processSteps.length === 0) {
+                    setErrors({
+                        submit: "No Process or steps found for Budget Reallocate Approval",
+                    });
+                    setIsSubmitting(false);
+                    return;
+                }
+                
+                // Sort process steps by order to get the first step
+                processSteps = processSteps.sort((a, b) => a.order - b.order);
+                const processStep = processSteps[0];
+
+                const processResponseViaUser = await axios.get(
+                    `/api/v1/process-steps/${processStep.id}/user/${user_id}`
+                );
+                
+                const assignUser = processResponseViaUser?.data?.data;
+                if (!assignUser) {
+                    setErrors({
+                        submit: "No assignee found for this process step and user",
+                    });
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                // Create budget request transaction
+                const transactionPayload = {
+                    request_budgets_id: reallocationId,
+                    requester_id: user_id,
+                    assigned_to: assignUser.approver_id,
+                    order: processStep.order,
+                    description: processStep.description,
+                    status: "Pending",
+                };
+
+                await axios.post(
+                    "/api/v1/budget-request-approval-trans",
+                    transactionPayload
+                );
+
+                // Create task
+                const taskPayload = {
+                    process_step_id: processStep.id,
+                    process_id: processStep.process_id,
+                    assigned_at: new Date().toISOString(),
+                    urgency: "Normal",
+                    assigned_to_user_id: assignUser.approver_id,
+                    assigned_from_user_id: user_id,
+                    request_budgets_id: reallocationId,
+                    status: "Pending",
+                };
+
+                await axios.post("/api/v1/tasks", taskPayload);
+
+                router.visit("/request-budgets");
             }
-            
-            // Sort process steps by order to get the first step
-            processSteps = processSteps.sort((a, b) => a.order - b.order);
-            const processStep = processSteps[0];
-
-            const processResponseViaUser = await axios.get(
-                `/api/v1/process-steps/${processStep.id}/user/${user_id}`
-            );
-            console.log('Process Step User Response:', processResponseViaUser.data);
-            
-            const assignUser = processResponseViaUser?.data?.data;
-            if (!assignUser) {
-                console.error('No assignee found');
-                setErrors({
-                    submit: "No assignee found for this process step and user",
-                });
-                setIsSubmitting(false);
-                return;
-            }
-
-            console.log('Creating budget request transaction...');
-            // Create budget request transaction
-            const transactionPayload = {
-                request_budgets_id: reallocationId,
-                requester_id: user_id,
-                assigned_to: assignUser.approver_id,
-                order: processStep.order,
-                description: processStep.description,
-                status: "Pending",
-            };
-            console.log('Transaction Payload:', transactionPayload);
-
-            await axios.post(
-                "/api/v1/budget-request-approval-trans",
-                transactionPayload
-            );
-            console.log('Transaction created successfully');
-
-            // Create task
-            console.log('Creating task...');
-            const taskPayload = {
-                process_step_id: processStep.id,
-                process_id: processStep.process_id,
-                assigned_at: new Date().toISOString(),
-                urgency: "Normal",
-                assigned_to_user_id: assignUser.approver_id,
-                assigned_from_user_id: user_id,
-                request_budgets_id: reallocationId,
-                status: "Pending",
-            };
-            console.log('Task Payload:', taskPayload);
-
-            await axios.post("/api/v1/tasks", taskPayload);
-            console.log('Task created successfully');
-            console.log('=== REALLOCATION REQUEST CREATED SUCCESSFULLY ===');
-
-            router.visit("/request-budgets");
         } catch (error) {
             console.error("Error saving reallocation request:", error);
 
@@ -578,7 +848,7 @@ const ReallocateBudgetForm = () => {
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-3xl font-bold text-[#2C323C]">
-                        Reallocate Sub Cost Center Budget
+                        {isEditMode ? "Edit Reallocate Sub Cost Center Budget" : "Reallocate Sub Cost Center Budget"}
                     </h2>
                     <p className="text-[#7D8086] text-lg">
                         Reallocate budget from one sub cost center to another
@@ -594,6 +864,7 @@ const ReallocateBudgetForm = () => {
                             id: year.id,
                             label: `${year.budget_name} (${year.period_name})`,
                         }))}
+                        disabled={isEditMode}
                     />
                     <ErrorMessage error={errors.fiscal_period_id} />
                 </div>
@@ -624,13 +895,13 @@ const ReallocateBudgetForm = () => {
                         <SelectFloating
                             label="Department Name"
                             name="department_id"
-                            value={formData.department_id}
+                            value={formData.department_id ? String(formData.department_id) : ""}
                             onChange={handleChange}
                             options={departments.map((dept) => ({
-                                id: dept.id,
+                                id: String(dept.id),
                                 label: dept.name,
                             }))}
-                            disabled={!formData.fiscal_period_id}
+                            disabled={isEditMode || !formData.fiscal_period_id}
                         />
                         <ErrorMessage error={errors.department_id} />
                     </div>
@@ -638,13 +909,13 @@ const ReallocateBudgetForm = () => {
                         <SelectFloating
                             label="Cost Center"
                             name="cost_center_id"
-                            value={formData.cost_center_id}
+                            value={formData.cost_center_id ? String(formData.cost_center_id) : ""}
                             onChange={handleChange}
                             options={costCenters.map((cost) => ({
-                                id: cost.id,
+                                id: String(cost.id),
                                 label: cost.name,
                             }))}
-                            disabled={!formData.department_id}
+                            disabled={isEditMode || !formData.department_id}
                         />
                         <ErrorMessage error={errors.cost_center_id} />
                     </div>
@@ -655,13 +926,13 @@ const ReallocateBudgetForm = () => {
                         <SelectFloating
                             label="Move From Sub Cost Center"
                             name="sub_cost_center"
-                            value={formData.sub_cost_center}
+                            value={formData.sub_cost_center ? String(formData.sub_cost_center) : ""}
                             onChange={handleChange}
                             options={subCostCenters.map((sub) => ({
-                                id: sub.id,
+                                id: String(sub.id),
                                 label: sub.name,
                             }))}
-                            disabled={!formData.cost_center_id}
+                            disabled={isEditMode || !formData.cost_center_id}
                         />
                         <ErrorMessage error={errors.sub_cost_center} />
                     </div>
@@ -682,13 +953,13 @@ const ReallocateBudgetForm = () => {
                         <SelectFloating
                             label="Move To Sub Cost Center"
                             name="reallocate_sub_cost_center"
-                            value={formData.reallocate_sub_cost_center}
+                            value={formData.reallocate_sub_cost_center ? String(formData.reallocate_sub_cost_center) : ""}
                             onChange={handleChange}
                             options={reallocateSubCostCenters.map((sub) => ({
-                                id: sub.id,
+                                id: String(sub.id),
                                 label: sub.name,
                             }))}
-                            disabled={!formData.sub_cost_center}
+                            disabled={isEditMode || !formData.sub_cost_center}
                         />
                         <ErrorMessage error={errors.reallocate_sub_cost_center} />
                     </div>
@@ -728,8 +999,30 @@ const ReallocateBudgetForm = () => {
                                     <span className="text-gray-700 text-sm overflow-hidden text-ellipsis max-w-[80%]">
                                         {tempAttachment.name}
                                     </span>
+                                ) : existingAttachment ? (
+                                    <span 
+                                        className="text-blue-600 text-sm overflow-hidden text-ellipsis max-w-[80%] hover:text-blue-800 hover:underline cursor-pointer"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            const filePath = existingAttachment.file_path;
+                                            if (filePath) {
+                                                const fixedPath = filePath.startsWith("http") 
+                                                    ? filePath 
+                                                    : filePath.startsWith("/storage/") 
+                                                        ? filePath 
+                                                        : `/storage/${filePath}`;
+                                                window.open(fixedPath, "_blank");
+                                            }
+                                        }}
+                                    >
+                                        {existingAttachment.original_name}
+                                    </span>
                                 ) : (
-                                    <span className="text-sm">Attachment</span>
+                                    <span className="text-sm">
+                                        {isEditMode
+                                            ? "Update Attachment"
+                                            : "Attachment"}
+                                    </span>
                                 )}
                                 <input
                                     type="file"
@@ -783,7 +1076,7 @@ const ReallocateBudgetForm = () => {
                         }`}
                         disabled={isSubmitting}
                     >
-                        {isSubmitting ? "Saving..." : "Save"}
+                        {isSubmitting ? (isEditMode ? "Updating..." : "Saving...") : (isEditMode ? "Update" : "Save")}
                     </button>
                 </div>
             </form>

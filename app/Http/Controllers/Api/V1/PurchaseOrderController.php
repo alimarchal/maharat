@@ -391,8 +391,29 @@ class PurchaseOrderController extends Controller
                         'available_alternatives_json' => json_encode($alternativesData),
                     ]);
                     
-                    // Note: History record will be created when destination is set via updateDestination()
-                    // This ensures we have both source and destination budget info
+                    // Create history record with source info (destination will be updated when approver selects it)
+                    if ($originalBudget) {
+                        \App\Models\BudgetReallocationHistory::create([
+                            'reallocation_request_id' => $reallocationRequest->id,
+                            'source_budget_request_id' => $originalBudget->id,
+                            'destination_budget_request_id' => null, // Will be set when destination is selected
+                            'reallocate_amount' => $shortfallAmount,
+                            'source_old_balance' => $originalBudget->balance_amount,
+                            'source_new_balance' => $originalBudget->balance_amount, // Will be updated when approved
+                            'destination_old_balance' => null, // Will be set when destination is selected
+                            'destination_new_balance' => null, // Will be updated when approved
+                            'source_old_approved_amount' => $originalBudget->approved_amount,
+                            'source_new_approved_amount' => null, // Will be updated when approved
+                            'destination_old_approved_amount' => null, // Will be set when destination is selected
+                            'source_old_requested_amount' => $originalBudget->requested_amount,
+                            'destination_old_requested_amount' => null, // Will be set when destination is selected
+                            'source_type' => 'purchase_order',
+                            'purchase_order_id' => $purchaseOrder->id,
+                            'status' => 'Draft',
+                            'notes' => 'Budget reallocation required for Purchase Order: ' . $purchaseOrder->purchase_order_no,
+                            'created_by' => auth()->id(),
+                        ]);
+                    }
                     
                     \Log::info('PurchaseOrder Store - Reallocation request created', [
                         'reallocation_request_id' => $reallocationRequest->id,

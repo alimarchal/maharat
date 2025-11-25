@@ -26,6 +26,10 @@ class BudgetReallocationHistory extends Model
         'source_new_approved_amount',
         'destination_old_approved_amount',
         'destination_new_approved_amount',
+        'source_type',
+        'purchase_order_id',
+        'source_old_requested_amount',
+        'destination_old_requested_amount',
         'status',
         'notes',
         'created_by',
@@ -42,6 +46,8 @@ class BudgetReallocationHistory extends Model
         'source_new_approved_amount' => 'decimal:2',
         'destination_old_approved_amount' => 'decimal:2',
         'destination_new_approved_amount' => 'decimal:2',
+        'source_old_requested_amount' => 'decimal:2',
+        'destination_old_requested_amount' => 'decimal:2',
     ];
 
     /**
@@ -82,5 +88,13 @@ class BudgetReallocationHistory extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * Get the purchase order associated with this reallocation history.
+     */
+    public function purchaseOrder(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrder::class);
     }
 }

@@ -49,7 +49,7 @@ const BudgetReallocationTable = () => {
             setLoading(true);
             try {
                 const response = await axios.get(
-                    `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,reallocateToSubCostCenter,originalDestinationSubCostCenter,updatedDestinationSubCostCenter,updatedByUser,purchaseOrder,creator&filter[type]=reallocation&page=${currentPage}&per_page=15&sort=-created_at`
+                    `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,reallocateToSubCostCenter,originalDestinationSubCostCenter,updatedDestinationSubCostCenter,updatedByUser,purchaseOrder,creator,reallocationHistory&filter[type]=reallocation&page=${currentPage}&per_page=15&sort=-created_at`
                 );
                 
                 setReallocations(response.data.data || []);
@@ -77,7 +77,7 @@ const BudgetReallocationTable = () => {
                         <th className="py-3 px-4">Taking From</th>
                         <th className="py-3 px-4">Reallocating To</th>
                         <th className="py-3 px-4">Reallocation Amount</th>
-                        <th className="py-3 px-4">Purchase Order</th>
+                        <th className="py-3 px-4">Reference</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                             Action
@@ -121,10 +121,10 @@ const BudgetReallocationTable = () => {
                                      "Not Selected"}
                                 </td>
                                 <td className="py-3 px-4">
-                                    {parseFloat(reallocation.reallocate_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} SAR
+                                    {parseFloat(reallocation.reallocation_history?.reallocate_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} SAR
                                 </td>
                                 <td className="py-3 px-4">
-                                    {reallocation.purchase_order?.purchase_order_no || "N/A"}
+                                    {reallocation.purchase_order_id ? (reallocation.purchase_order?.purchase_order_no || "N/A") : reallocation.id}
                                 </td>
                                 <td className="py-3 px-4">
                                     <StatusBadge status={reallocation.status} />
@@ -200,4 +200,5 @@ const BudgetReallocationTable = () => {
 };
 
 export default BudgetReallocationTable;
+
 

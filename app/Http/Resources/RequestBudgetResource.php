@@ -89,15 +89,19 @@ class RequestBudgetResource extends JsonResource
                     'source_new_approved_amount' => $this->reallocationHistory->source_new_approved_amount,
                     'destination_old_approved_amount' => $this->reallocationHistory->destination_old_approved_amount,
                     'destination_new_approved_amount' => $this->reallocationHistory->destination_new_approved_amount,
+                    'source_old_requested_amount' => $this->reallocationHistory->source_old_requested_amount,
+                    'destination_old_requested_amount' => $this->reallocationHistory->destination_old_requested_amount,
                     'status' => $this->reallocationHistory->status,
                     'source_budget_request' => $this->reallocationHistory->sourceBudgetRequest ? [
                         'id' => $this->reallocationHistory->sourceBudgetRequest->id,
                         'approved_amount' => $this->reallocationHistory->sourceBudgetRequest->approved_amount,
                         'previous_year_budget_amount' => $this->reallocationHistory->sourceBudgetRequest->previous_year_budget_amount,
+                        'requested_amount' => $this->reallocationHistory->sourceBudgetRequest->requested_amount,
                     ] : null,
                     'destination_budget_request' => $this->reallocationHistory->destinationBudgetRequest ? [
                         'id' => $this->reallocationHistory->destinationBudgetRequest->id,
                         'approved_amount' => $this->reallocationHistory->destinationBudgetRequest->approved_amount,
+                        'requested_amount' => $this->reallocationHistory->destinationBudgetRequest->requested_amount,
                     ] : null,
                 ];
             }),

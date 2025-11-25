@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const SelectFloating = ({ label, name, value, onChange, options, onScroll, loading, hasMore = true, showPagination = false, currentPage = 1, totalPages = 1, onPageChange }) => {
+const SelectFloating = ({ label, name, value, onChange, options, onScroll, loading, hasMore = true, showPagination = false, currentPage = 1, totalPages = 1, onPageChange, disabled = false }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedLabel, setSelectedLabel] = useState('');
     const [openUpward, setOpenUpward] = useState(false);
@@ -14,9 +14,16 @@ const SelectFloating = ({ label, name, value, onChange, options, onScroll, loadi
         setSelectedLabel(selectedOption ? selectedOption.label : '');
     }, [value, options]);
 
+    // Close dropdown if disabled
+    useEffect(() => {
+        if (disabled && isOpen) {
+            setIsOpen(false);
+        }
+    }, [disabled, isOpen]);
+
     // Calculate dropdown position when opening
     useEffect(() => {
-        if (isOpen && dropdownRef.current) {
+        if (isOpen && !disabled && dropdownRef.current) {
             const calculatePosition = () => {
                 const triggerRect = dropdownRef.current.getBoundingClientRect();
                 const viewportHeight = window.innerHeight;
@@ -96,8 +103,10 @@ const SelectFloating = ({ label, name, value, onChange, options, onScroll, loadi
     return (
         <div className="relative w-full" ref={dropdownRef}>
             <div
-                className="peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC] transition-all duration-300 ease-in-out cursor-pointer min-h-[60px] flex items-center"
-                onClick={() => setIsOpen(!isOpen)}
+                className={`peer border border-gray-300 p-5 rounded-2xl w-full bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#009FDC] focus:border-[#009FDC] transition-all duration-300 ease-in-out min-h-[60px] flex items-center ${
+                    disabled ? 'cursor-not-allowed' : 'cursor-pointer'
+                }`}
+                onClick={() => !disabled && setIsOpen(!isOpen)}
             >
                 <span className={`${value ? 'text-gray-900' : 'text-gray-400'}`}>
                     {value ? selectedLabel : `Select ${label}`}
@@ -112,7 +121,7 @@ const SelectFloating = ({ label, name, value, onChange, options, onScroll, loadi
                 </svg>
             </div>
             
-            {isOpen && (
+            {isOpen && !disabled && (
                 <div 
                     ref={dropdownMenuRef}
                     className={`absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-[160px] overflow-y-auto ${
@@ -224,10 +233,12 @@ const SelectFloating = ({ label, name, value, onChange, options, onScroll, loadi
                         : "top-1/2 text-base text-gray-400"
                 }`}
                 onClick={(e) => {
-                    e.stopPropagation();
-                    setIsOpen(!isOpen);
+                    if (!disabled) {
+                        e.stopPropagation();
+                        setIsOpen(!isOpen);
+                    }
                 }}
-                style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                style={{ pointerEvents: disabled ? 'none' : 'auto', cursor: disabled ? 'not-allowed' : 'pointer' }}
             >
                 {value ? label : `Select ${label}`}
             </label>

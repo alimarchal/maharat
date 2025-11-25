@@ -18,21 +18,13 @@ const RequestBudgetTable = () => {
     const filters = ["All", "Draft", "Approved", "Pending", "Rejected"];
 
     const canViewReallocation = hasPermission('view_budget_reallocation');
-    
-    // Debug logging
-    useEffect(() => {
-        console.log('=== RequestBudgetTable Permission Check ===', {
-            canViewReallocation,
-            hasPermission_view_budget_reallocation: hasPermission('view_budget_reallocation')
-        });
-    }, [canViewReallocation, hasPermission]);
 
     useEffect(() => {
         const fetchBudgetRequests = async () => {
             setLoading(true);
             setError("");
             try {
-                let url = `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,reallocateToSubCostCenter,creator,reallocationHistory.sourceBudgetRequest,reallocationHistory.destinationBudgetRequest&page=${currentPage}&per_page=15&sort=-created_at`;
+                let url = `/api/v1/request-budgets?include=fiscalPeriod,department,costCenter,subCostCenter,reallocateToSubCostCenter,creator,reallocationHistory,reallocationHistory.sourceBudgetRequest,reallocationHistory.destinationBudgetRequest&page=${currentPage}&per_page=15&sort=-created_at`;
                 
                 // Apply filter if not "All"
                 if (selectedFilter !== "All") {
@@ -187,12 +179,12 @@ const RequestBudgetTable = () => {
                                 </td>
                                 <td className="py-3 px-4">
                                     {request.type === 'reallocation' 
-                                        ? (request.reallocation_history?.destination_budget_request?.approved_amount || 'N/A')
+                                        ? (request.reallocation_history?.destination_old_balance || 'N/A')
                                         : request.previous_year_budget_amount}
                                 </td>
                                 <td className="py-3 px-4">
                                     {request.type === 'reallocation'
-                                        ? (request.reallocation_history?.reallocate_amount ?? request.reallocate_amount ?? 'N/A')
+                                        ? (request.reallocation_history?.reallocate_amount ?? 'N/A')
                                         : request.requested_amount}
                                 </td>
                                 <td className="py-3 px-4">
