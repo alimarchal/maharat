@@ -1497,30 +1497,50 @@ class TaskController extends Controller
                                     ->first();
 
                                 if ($sourceBudget && $destinationBudget) {
-                                    // Store old approved amounts before updating
+                                    // Store old approved amounts and balances before updating
                                     $sourceOldApproved = $sourceBudget->approved_amount;
                                     $destinationOldApproved = $destinationBudget->approved_amount;
+                                    $sourceOldBalance = $sourceBudget->balance_amount;
+                                    $destinationOldBalance = $destinationBudget->balance_amount;
 
                                     // Update source: approved_amount = approved_amount - reallocate_amount
                                     $sourceBudget->approved_amount = $sourceBudget->approved_amount - $budgetRequest->reallocate_amount;
+                                    // Update source: balance_amount = balance_amount - reallocate_amount
+                                    $sourceBudget->balance_amount = $sourceBudget->balance_amount - $budgetRequest->reallocate_amount;
                                     $sourceBudget->save();
 
                                     // Update destination: approved_amount = approved_amount + reallocate_amount
                                     $destinationBudget->approved_amount = $destinationBudget->approved_amount + $budgetRequest->reallocate_amount;
+                                    // Update destination: balance_amount = balance_amount + reallocate_amount
+                                    $destinationBudget->balance_amount = $destinationBudget->balance_amount + $budgetRequest->reallocate_amount;
                                     $destinationBudget->save();
 
                                     // Update history record
                                     $historyRecord = BudgetReallocationHistory::where('reallocation_request_id', $task->request_budgets_id)->first();
                                     if ($historyRecord) {
                                         $oldStatus = $historyRecord->status;
-                                        $historyRecord->update([
+                                        $updateData = [
                                             'status' => 'Approved',
                                             'source_old_approved_amount' => $sourceOldApproved,
                                             'source_new_approved_amount' => $sourceBudget->approved_amount,
                                             'destination_old_approved_amount' => $destinationOldApproved,
                                             'destination_new_approved_amount' => $destinationBudget->approved_amount,
+                                            'source_old_balance' => $sourceOldBalance,
+                                            'source_new_balance' => $sourceBudget->balance_amount,
+                                            'destination_old_balance' => $destinationOldBalance,
+                                            'destination_new_balance' => $destinationBudget->balance_amount,
                                             'updated_by' => auth()->id(),
-                                        ]);
+                                        ];
+                                        
+                                        // Preserve requested_amount if not already set
+                                        if ($historyRecord->source_old_requested_amount === null) {
+                                            $updateData['source_old_requested_amount'] = $sourceBudget->requested_amount;
+                                        }
+                                        if ($historyRecord->destination_old_requested_amount === null) {
+                                            $updateData['destination_old_requested_amount'] = $destinationBudget->requested_amount;
+                                        }
+                                        
+                                        $historyRecord->update($updateData);
                                         Log::info('=== REALLOCATION HISTORY STATUS UPDATED TO APPROVED (FINAL APPROVAL) ===', [
                                             'task_id' => $task->id,
                                             'request_budget_id' => $task->request_budgets_id,

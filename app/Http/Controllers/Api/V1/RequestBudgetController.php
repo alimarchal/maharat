@@ -114,23 +114,15 @@ class RequestBudgetController extends Controller
 
                 // Store old balances in the reallocation record (not on source/destination records)
                 // This preserves history even if multiple reallocations are made
+                // Note: balance_amount will only be updated after the reallocation request is fully approved
                 $data['old_balance'] = $sourceBudget->balance_amount;
                 $data['destination_old_balance'] = $destinationBudget->balance_amount;
 
-                // Update source budget: balance_amount = balance_amount - reallocate_amount
-                // Note: We don't update old_balance on source/destination records to preserve history
-                $sourceBudget->balance_amount = $sourceBudget->balance_amount - $data['reallocate_amount'];
-                $sourceBudget->save();
-
-                // Update destination budget: balance_amount = balance_amount + reallocate_amount
-                $destinationBudget->balance_amount = $destinationBudget->balance_amount + $data['reallocate_amount'];
-                $destinationBudget->save();
-
-                Log::info('=== REALLOCATION BALANCES UPDATED ===', [
+                Log::info('=== REALLOCATION REQUEST CREATED (BALANCES NOT YET UPDATED) ===', [
                     'source_old_balance' => $data['old_balance'],
-                    'source_new_balance' => $sourceBudget->balance_amount,
                     'destination_old_balance' => $data['destination_old_balance'],
-                    'destination_new_balance' => $destinationBudget->balance_amount
+                    'reallocate_amount' => $data['reallocate_amount'],
+                    'note' => 'Balance amounts will be updated only after full approval'
                 ]);
             }
 
@@ -149,6 +141,10 @@ class RequestBudgetController extends Controller
                     'destination_new_balance' => $destinationBudget->balance_amount,
                     'source_old_approved_amount' => $sourceBudget->approved_amount,
                     'destination_old_approved_amount' => $destinationBudget->approved_amount,
+                    'source_old_requested_amount' => $sourceBudget->requested_amount,
+                    'destination_old_requested_amount' => $destinationBudget->requested_amount,
+                    'source_type' => 'budget_reallocation',
+                    'purchase_order_id' => null,
                     'status' => 'Draft',
                     'notes' => $data['reason_for_increase'] ?? null,
                     'created_by' => auth()->id(),
@@ -222,6 +218,137 @@ class RequestBudgetController extends Controller
 
             $data = $request->validated();
             $data['updated_by'] = auth()->id();
+
+            Log::info('=== REQUEST BUDGET UPDATE START ===', [
+                'request_budget_id' => $requestBudget->id,
+                'type' => $requestBudget->type,
+                'has_reallocate_amount' => isset($data['reallocate_amount']),
+                'reallocate_amount' => $data['reallocate_amount'] ?? null,
+            ]);
+
+            // If this is a reallocation request and reallocate_amount is being updated, update the history record
+            if ($requestBudget->type === 'reallocation' && isset($data['reallocate_amount'])) {
+                $historyRecord = \App\Models\BudgetReallocationHistory::where('reallocation_request_id', $requestBudget->id)->first();
+                
+                Log::info('=== CHECKING HISTORY RECORD ===', [
+                    'reallocation_request_id' => $requestBudget->id,
+                    'history_record_found' => $historyRecord !== null,
+                    'history_record_id' => $historyRecord?->id,
+                ]);
+                
+                if ($historyRecord) {
+                    // Store old values before updating
+                    $oldReallocateAmount = $historyRecord->reallocate_amount;
+                    $oldSourceNewBalance = $historyRecord->source_new_balance;
+                    $oldDestinationNewBalance = $historyRecord->destination_new_balance;
+                    
+                    // Calculate the difference in reallocate amount
+                    $amountDifference = $data['reallocate_amount'] - $oldReallocateAmount;
+                    
+                    // Update the reallocate_amount in history
+                    $historyRecord->reallocate_amount = $data['reallocate_amount'];
+                    
+                    // Update source_new_balance: decrease by the extra amount (taking more from source)
+                    // source_new_balance = source_old_balance - new_reallocate_amount
+                    // So we need to adjust: new_balance = old_balance - (old_reallocate_amount + difference)
+                    // Which simplifies to: new_balance = old_new_balance - difference
+                    $historyRecord->source_new_balance = $oldSourceNewBalance - $amountDifference;
+                    
+                    // Update destination_new_balance: increase by the extra amount (adding more to destination)
+                    // destination_new_balance = destination_old_balance + new_reallocate_amount
+                    // So we need to adjust: new_balance = old_balance + (old_reallocate_amount + difference)
+                    // Which simplifies to: new_balance = old_new_balance + difference
+                    $historyRecord->destination_new_balance = $oldDestinationNewBalance + $amountDifference;
+                    
+                    // Update notes if reason_for_increase is provided
+                    if (isset($data['reason_for_increase'])) {
+                        $historyRecord->notes = $data['reason_for_increase'];
+                    }
+                    
+                    $historyRecord->updated_by = auth()->id();
+                    $saveResult = $historyRecord->save();
+                    
+                    Log::info('=== REALLOCATION HISTORY UPDATED ===', [
+                        'reallocation_request_id' => $requestBudget->id,
+                        'history_record_id' => $historyRecord->id,
+                        'old_reallocate_amount' => $oldReallocateAmount,
+                        'new_reallocate_amount' => $data['reallocate_amount'],
+                        'amount_difference' => $amountDifference,
+                        'source_balance' => [
+                            'old_new_balance' => $oldSourceNewBalance,
+                            'new_new_balance' => $historyRecord->source_new_balance,
+                            'old_balance' => $historyRecord->source_old_balance,
+                        ],
+                        'destination_balance' => [
+                            'old_new_balance' => $oldDestinationNewBalance,
+                            'new_new_balance' => $historyRecord->destination_new_balance,
+                            'old_balance' => $historyRecord->destination_old_balance,
+                        ],
+                        'save_result' => $saveResult,
+                        'updated_values' => $historyRecord->getDirty(),
+                    ]);
+                } else {
+                    Log::warning('=== HISTORY RECORD NOT FOUND ===', [
+                        'reallocation_request_id' => $requestBudget->id,
+                        'message' => 'History record does not exist for this reallocation request. Attempting to create one.',
+                    ]);
+                    
+                    // If history record doesn't exist, try to create it
+                    // This can happen if the reallocation was created before history tracking was added
+                    if ($requestBudget->sub_cost_center && $requestBudget->reallocate_to_sub_cost_center) {
+                        // Find source and destination budgets
+                        $sourceBudget = RequestBudget::where('fiscal_period_id', $requestBudget->fiscal_period_id)
+                            ->where('department_id', $requestBudget->department_id)
+                            ->where('cost_center_id', $requestBudget->cost_center_id)
+                            ->where('sub_cost_center', $requestBudget->sub_cost_center)
+                            ->where('status', 'Approved')
+                            ->first();
+                            
+                        $destinationBudget = RequestBudget::where('fiscal_period_id', $requestBudget->fiscal_period_id)
+                            ->where('department_id', $requestBudget->department_id)
+                            ->where('cost_center_id', $requestBudget->cost_center_id)
+                            ->where('sub_cost_center', $requestBudget->reallocate_to_sub_cost_center)
+                            ->where('status', 'Approved')
+                            ->first();
+                            
+                        if ($sourceBudget && $destinationBudget) {
+                            $newHistoryRecord = \App\Models\BudgetReallocationHistory::create([
+                                'reallocation_request_id' => $requestBudget->id,
+                                'source_budget_request_id' => $sourceBudget->id,
+                                'destination_budget_request_id' => $destinationBudget->id,
+                                'reallocate_amount' => $data['reallocate_amount'],
+                                'source_old_balance' => $sourceBudget->balance_amount ?? 0,
+                                'source_new_balance' => $sourceBudget->balance_amount ?? 0,
+                                'destination_old_balance' => $destinationBudget->balance_amount ?? 0,
+                                'destination_new_balance' => $destinationBudget->balance_amount ?? 0,
+                                'source_old_approved_amount' => $sourceBudget->approved_amount ?? null,
+                                'destination_old_approved_amount' => $destinationBudget->approved_amount ?? null,
+                                'source_old_requested_amount' => $sourceBudget->requested_amount ?? null,
+                                'destination_old_requested_amount' => $destinationBudget->requested_amount ?? null,
+                                'source_type' => 'budget_reallocation',
+                                'purchase_order_id' => $requestBudget->purchase_order_id,
+                                'status' => $requestBudget->status ?? 'Draft',
+                                'notes' => $data['reason_for_increase'] ?? $requestBudget->reason_for_increase ?? null,
+                                'created_by' => auth()->id(),
+                                'updated_by' => auth()->id(),
+                            ]);
+                            
+                            Log::info('=== HISTORY RECORD CREATED DURING UPDATE ===', [
+                                'reallocation_request_id' => $requestBudget->id,
+                                'history_record_id' => $newHistoryRecord->id,
+                                'reallocate_amount' => $data['reallocate_amount'],
+                            ]);
+                        }
+                    }
+                }
+            } else {
+                Log::info('=== SKIPPING HISTORY UPDATE ===', [
+                    'reallocation_request_id' => $requestBudget->id,
+                    'type' => $requestBudget->type,
+                    'is_reallocation' => $requestBudget->type === 'reallocation',
+                    'has_reallocate_amount' => isset($data['reallocate_amount']),
+                ]);
+            }
 
             $requestBudget->update($data);
 
@@ -430,6 +557,9 @@ class RequestBudgetController extends Controller
             // Create or update history record
             $historyRecord = \App\Models\BudgetReallocationHistory::where('reallocation_request_id', $requestBudget->id)->first();
             
+            // Determine source type based on whether this is from purchase order
+            $sourceType = $requestBudget->purchase_order_id ? 'purchase_order' : 'budget_reallocation';
+            
             if (!$historyRecord) {
                 // Create history record if it doesn't exist
                 \App\Models\BudgetReallocationHistory::create([
@@ -443,6 +573,10 @@ class RequestBudgetController extends Controller
                     'destination_new_balance' => $destinationBudget->balance_amount, // Will be updated when approved
                     'source_old_approved_amount' => $sourceBudget->approved_amount,
                     'destination_old_approved_amount' => $destinationBudget->approved_amount,
+                    'source_old_requested_amount' => $sourceBudget->requested_amount,
+                    'destination_old_requested_amount' => $destinationBudget->requested_amount,
+                    'source_type' => $sourceType,
+                    'purchase_order_id' => $requestBudget->purchase_order_id,
                     'status' => $requestBudget->status ?? 'Draft',
                     'notes' => $requestBudget->reason_for_increase ?? null,
                     'created_by' => auth()->id(),
@@ -452,6 +586,10 @@ class RequestBudgetController extends Controller
                 $historyRecord->destination_budget_request_id = $destinationBudget->id;
                 $historyRecord->destination_old_balance = $destinationBudget->balance_amount;
                 $historyRecord->destination_old_approved_amount = $destinationBudget->approved_amount;
+                $historyRecord->destination_old_requested_amount = $destinationBudget->requested_amount;
+                $historyRecord->source_old_requested_amount = $sourceBudget->requested_amount;
+                $historyRecord->source_type = $sourceType;
+                $historyRecord->purchase_order_id = $requestBudget->purchase_order_id;
                 $historyRecord->updated_by = auth()->id();
                 $historyRecord->save();
             }

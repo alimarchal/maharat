@@ -326,6 +326,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/ReallocateBudgetForm']);
     })->name('requestBudget.reallocate');
     Route::get('/request-budgets/{id}/edit', function ($id) {
+        // Fetch the request budget to check its type
+        $requestBudget = \App\Models\RequestBudget::find($id);
+        
+        if (!$requestBudget) {
+            abort(404, 'Budget request not found');
+        }
+        
+        // Route to appropriate form based on type
+        if ($requestBudget->type === 'reallocation') {
+            return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/ReallocateBudgetForm', 'budgetRequestId' => $id]);
+        }
+        
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/BudgetRequestForm', 'budgetRequestId' => $id]);
     })->name('requestBudget.edit');
 

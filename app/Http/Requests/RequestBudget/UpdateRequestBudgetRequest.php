@@ -39,6 +39,9 @@ class UpdateRequestBudgetRequest extends FormRequest
             'original_name' => 'nullable|string',
             'reason_for_increase' => 'nullable|string|max:1000',
             'status' => 'required|in:Draft,Pending,Approved,Rejected',
+            'type' => 'sometimes|in:budget_request,reallocation',
+            'reallocate_amount' => 'nullable|numeric|min:0',
+            'reallocate_to_sub_cost_center' => 'nullable|exists:cost_centers,id',
         ];
     }
 
