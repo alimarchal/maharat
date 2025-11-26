@@ -231,7 +231,7 @@ const ReviewTask = () => {
                                             status: "Pending",
                                         };
                                     } else if (processTitle === "Budget Reallocate Approval") {
-                                        url = "/api/v1/budget-request-approval-transactions";
+                                        url = "/api/v1/budget-request-approval-trans";
                                         key = "request_budgets_id";
                                         payload = {
                                             request_budgets_id: updatedTaskData.request_budget?.id,
