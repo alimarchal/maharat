@@ -129,6 +129,7 @@ class TaskParameters
         'request_budget.updatedByUser',
         'request_budget.purchaseOrder',
         'request_budget.sourceBudgetRequest',
+        'request_budget.reallocationHistory',
         'grn',
         'grn.user',
         'grn.quotation',
