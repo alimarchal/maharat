@@ -590,6 +590,43 @@ const ReviewTask = () => {
 
     return (
         <div className="flex flex-col items-center w-full">
+            {/* Warning message when no alternatives are available for reallocation - shown above Task Review Details */}
+            {(() => {
+                const isReallocation = taskData?.process?.title === "Budget Reallocate Approval" && 
+                                      taskData?.request_budget?.type === 'reallocation';
+                const subCostCenterUpdated = taskData?.request_budget?.sub_cost_center_updated;
+                const noAlternativesAvailable = isReallocation && 
+                                               !subCostCenterUpdated && 
+                                               availableAlternatives.length === 0;
+                
+                if (noAlternativesAvailable) {
+                    return (
+                        <div className="w-full mb-6 p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
+                            <div className="flex items-start">
+                                <div className="flex-shrink-0">
+                                    <svg className="h-5 w-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div className="ml-3 flex-1">
+                                    <h4 className="text-sm font-medium text-yellow-800">
+                                        No Alternative Sub Cost Center Available
+                                    </h4>
+                                    <div className="mt-2 text-sm text-yellow-700">
+                                        <p>
+                                            The purchase order cannot be approved through reallocation.
+                                        </p>
+                                        <p className="mt-2">
+                                            You must request a new budget allocation for this sub cost center or use a different sub cost center that has budget available.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+                return null;
+            })()}
             <div className="w-full bg-white shadow-lg rounded-2xl p-6">
                 <h2 className="text-3xl font-bold text-[#2C323C] mb-6">
                     Task Review Details
@@ -740,22 +777,34 @@ const ReviewTask = () => {
                                             const canUpdateSubCostCenter = !subCostCenterUpdated && 
                                                                           availableAlternatives.length > 0;
                                             
+                                            // Check if there are no alternatives and sub cost center hasn't been updated
+                                            const noAlternativesAvailable = !subCostCenterUpdated && 
+                                                                           availableAlternatives.length === 0;
+                                            
                                             const baseOptions = [];
                                             
-                                            // Add "Update Sub Cost Center" if available (replaces Approve when not updated)
-                                            if (canUpdateSubCostCenter) {
-                                                baseOptions.push({ id: "Update Sub Cost Center", label: "Update Sub Cost Center" });
+                                            if (noAlternativesAvailable) {
+                                                // If no alternatives exist and destination hasn't been set, only allow Reject
+                                                // This prevents the user from being stuck
+                                                // Only show "Reject" - no other options available
+                                                baseOptions.push({ id: "Reject", label: "Reject" });
+                                                // Do NOT add "Refer" option when no alternatives exist
                                             } else {
-                                                // Add "Approve" only if sub cost center has been updated
-                                                baseOptions.push({ id: "Approve", label: "Approve" });
-                                            }
-                                            
-                                            // Always add "Reject"
-                                            baseOptions.push({ id: "Reject", label: "Reject" });
-                                            
-                                            // Add "Refer" only if continue_approval_flow is not 0
-                                            if (taskData?.continue_approval_flow != 0) {
-                                                baseOptions.push({ id: "Refer", label: "Refer" });
+                                                // Normal flow: Add "Update Sub Cost Center" if available (replaces Approve when not updated)
+                                                if (canUpdateSubCostCenter) {
+                                                    baseOptions.push({ id: "Update Sub Cost Center", label: "Update Sub Cost Center" });
+                                                } else {
+                                                    // Add "Approve" only if sub cost center has been updated
+                                                    baseOptions.push({ id: "Approve", label: "Approve" });
+                                                }
+                                                
+                                                // Always add "Reject"
+                                                baseOptions.push({ id: "Reject", label: "Reject" });
+                                                
+                                                // Add "Refer" only if continue_approval_flow is not 0
+                                                if (taskData?.continue_approval_flow != 0) {
+                                                    baseOptions.push({ id: "Refer", label: "Refer" });
+                                                }
                                             }
                                             
                                             return baseOptions;

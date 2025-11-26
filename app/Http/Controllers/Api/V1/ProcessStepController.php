@@ -12,6 +12,7 @@ use App\Models\Designation;
 use App\Models\Process;
 use App\Models\ProcessStep;
 use App\Models\User;
+use App\Services\ApproverResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -463,5 +464,55 @@ class ProcessStepController extends Controller
                 'process_step' => $process_step_info
             ]
         ], Response::HTTP_OK);
+    }
+
+    /**
+     * Get process step users/approvers based on filters
+     * This endpoint is used to find approvers for a process step
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getProcessStepUsers(Request $request): JsonResponse
+    {
+        $request->validate([
+            'filter.process_step_id' => 'required|exists:process_steps,id',
+            'filter.user_id' => 'required|exists:users,id',
+        ]);
+
+        $processStepId = $request->input('filter.process_step_id');
+        $userId = $request->input('filter.user_id');
+
+        try {
+            $processStep = ProcessStep::findOrFail($processStepId);
+            $user = User::findOrFail($userId);
+
+            // Use ApproverResolver to get the approver
+            $resolver = new ApproverResolver();
+            $approverId = $resolver->resolveApproverId($processStep, $user);
+
+            if ($approverId) {
+                $approver = User::find($approverId);
+                return response()->json([
+                    'data' => [
+                        [
+                            'approver_id' => $approverId,
+                            'user_id' => $userId,
+                            'process_step_id' => $processStepId,
+                            'approver' => $approver
+                        ]
+                    ]
+                ], Response::HTTP_OK);
+            }
+
+            return response()->json([
+                'data' => []
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to get process step users',
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }

@@ -390,6 +390,32 @@ class BudgetRequestApprovalTransactionController extends Controller
                         'new_status' => DB::table('request_budgets')->where('id', $budgetRequestApprovalTransaction->request_budgets_id)->value('status')
                     ]);
 
+                    // Check if this is a reallocation request linked to a purchase order
+                    $budgetRequest = DB::table('request_budgets')
+                        ->where('id', $budgetRequestApprovalTransaction->request_budgets_id)
+                        ->first();
+
+                    if ($budgetRequest && $budgetRequest->type === 'reallocation' && $budgetRequest->purchase_order_id) {
+                        Log::info('Reallocation request rejected - updating linked Purchase Order status to Rejected', [
+                            'request_budget_id' => $budgetRequestApprovalTransaction->request_budgets_id,
+                            'purchase_order_id' => $budgetRequest->purchase_order_id
+                        ]);
+
+                        // Update Purchase Order status to Rejected
+                        $poUpdated = DB::table('purchase_orders')
+                            ->where('id', $budgetRequest->purchase_order_id)
+                            ->update([
+                                'status' => 'Rejected',
+                                'updated_at' => now()
+                            ]);
+
+                        Log::info('Purchase Order rejection status update result', [
+                            'purchase_order_id' => $budgetRequest->purchase_order_id,
+                            'update_success' => $poUpdated,
+                            'new_status' => DB::table('purchase_orders')->where('id', $budgetRequest->purchase_order_id)->value('status')
+                        ]);
+                    }
+
                 } catch (\Exception $e) {
                     Log::error('Failed to update Budget Request status for rejection', [
                         'request_budget_id' => $budgetRequestApprovalTransaction->request_budgets_id,
