@@ -591,11 +591,15 @@ const ReviewTask = () => {
     return (
         <div className="flex flex-col items-center w-full">
             {/* Warning message when no alternatives are available for reallocation - shown above Task Review Details */}
+            {/* Only show this warning for reallocation requests created from purchase orders */}
             {(() => {
                 const isReallocation = taskData?.process?.title === "Budget Reallocate Approval" && 
                                       taskData?.request_budget?.type === 'reallocation';
+                const isFromPurchaseOrder = taskData?.request_budget?.purchase_order_id !== null && 
+                                          taskData?.request_budget?.purchase_order_id !== undefined;
                 const subCostCenterUpdated = taskData?.request_budget?.sub_cost_center_updated;
                 const noAlternativesAvailable = isReallocation && 
+                                               isFromPurchaseOrder &&
                                                !subCostCenterUpdated && 
                                                availableAlternatives.length === 0;
                 
@@ -773,19 +777,25 @@ const ReviewTask = () => {
                                             // Check if sub cost center has been updated (destination selected)
                                             const subCostCenterUpdated = taskData?.request_budget?.sub_cost_center_updated;
                                             
+                                            // Check if this reallocation is from a purchase order
+                                            const isFromPurchaseOrder = taskData?.request_budget?.purchase_order_id !== null && 
+                                                                      taskData?.request_budget?.purchase_order_id !== undefined;
+                                            
                                             // Show "Update Sub Cost Center" only if not updated yet and alternatives exist
                                             const canUpdateSubCostCenter = !subCostCenterUpdated && 
                                                                           availableAlternatives.length > 0;
                                             
                                             // Check if there are no alternatives and sub cost center hasn't been updated
-                                            const noAlternativesAvailable = !subCostCenterUpdated && 
+                                            // Only restrict options if this is from a purchase order
+                                            const noAlternativesAvailable = isFromPurchaseOrder &&
+                                                                           !subCostCenterUpdated && 
                                                                            availableAlternatives.length === 0;
                                             
                                             const baseOptions = [];
                                             
                                             if (noAlternativesAvailable) {
                                                 // If no alternatives exist and destination hasn't been set, only allow Reject
-                                                // This prevents the user from being stuck
+                                                // This prevents the user from being stuck (only for PO-based reallocations)
                                                 // Only show "Reject" - no other options available
                                                 baseOptions.push({ id: "Reject", label: "Reject" });
                                                 // Do NOT add "Refer" option when no alternatives exist
