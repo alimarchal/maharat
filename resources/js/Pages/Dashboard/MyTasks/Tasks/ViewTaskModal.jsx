@@ -21,7 +21,8 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
     const [completeTaskData, setCompleteTaskData] = useState(null);
     const [previouslyDelivered, setPreviouslyDelivered] = useState({});
     const [rfqItems, setRfqItems] = useState([]);
-    const [sourceBudgetBalance, setSourceBudgetBalance] = useState(null);
+    const [movingToBudgetBalance, setMovingToBudgetBalance] = useState(null); // For destination (Moving To)
+    const [movedFromBudgetBalance, setMovedFromBudgetBalance] = useState(null); // For source (Moved From)
     
     // PDF generation states
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -33,83 +34,8 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
     const [selectedRFQId, setSelectedRFQId] = useState(null);
     const [savedRFQPdfUrl, setSavedRFQPdfUrl] = useState(null);
     
-    // Ref for destination sub cost center name element
+    // Ref for moved from sub cost center name element (removed cleaning code - now displays source directly)
     const destinationSubCostCenterRef = useRef(null);
-
-    // Clean the destination sub cost center name after render
-    useEffect(() => {
-        if (destinationSubCostCenterRef.current && completeTaskData?.request_budget) {
-            const requestBudget = completeTaskData.request_budget;
-            const updatedName = requestBudget.updated_destination_sub_cost_center_details?.name;
-            const reallocateName = requestBudget.reallocate_to_sub_cost_center_details?.name;
-            let name = updatedName || reallocateName || null;
-            
-            if (name) {
-                let nameStr = String(name).trim();
-                const costCenterId = requestBudget.updated_destination_sub_cost_center_details?.id || 
-                                    requestBudget.reallocate_to_sub_cost_center_details?.id;
-                
-                // Remove trailing "0" if it exists and the character before it is not a digit
-                while (nameStr.length > 1 && nameStr.endsWith('0')) {
-                    const charBeforeZero = nameStr.charAt(nameStr.length - 2);
-                    if (!/\d/.test(charBeforeZero)) {
-                        nameStr = nameStr.slice(0, -1);
-                    } else {
-                        break;
-                    }
-                }
-                
-                // If ID exists and name ends with the last digit of ID, remove it
-                if (costCenterId) {
-                    const idStr = String(costCenterId);
-                    const lastDigitOfId = idStr.charAt(idStr.length - 1);
-                    if (nameStr.endsWith(lastDigitOfId) && nameStr.length > 1) {
-                        const charBeforeLastDigit = nameStr.charAt(nameStr.length - 2);
-                        if (!/\d/.test(charBeforeLastDigit)) {
-                            nameStr = nameStr.slice(0, -1);
-                        }
-                    }
-                }
-                
-                // Final pass: Remove any trailing "0" one more time
-                if (nameStr.endsWith('0') && nameStr.length > 1) {
-                    const charBeforeZero = nameStr.charAt(nameStr.length - 2);
-                    if (!/\d/.test(charBeforeZero)) {
-                        nameStr = nameStr.slice(0, -1);
-                    }
-                }
-                
-                // Check if there's a text node or element after this one that has "0"
-                const nextSibling = destinationSubCostCenterRef.current.nextSibling;
-                if (nextSibling && nextSibling.nodeType === 3) { // Text node
-                    const nextText = nextSibling.textContent.trim();
-                    if (nextText === '0' || nextText.startsWith('0')) {
-                        nextSibling.remove();
-                    }
-                }
-                
-                // Also check parent's innerHTML to see if there's something else
-                const parentElement = destinationSubCostCenterRef.current.parentElement;
-                if (parentElement) {
-                    const parentText = parentElement.textContent;
-                    if (parentText.endsWith('0') && !nameStr.endsWith('0')) {
-                        Array.from(parentElement.childNodes).forEach((child) => {
-                            if (child.nodeType === 3 && child.textContent.trim() === '0') { // Text node with just "0"
-                                child.remove();
-                            }
-                        });
-                    }
-                }
-                
-                // Directly set the text content to avoid any React rendering issues
-                // Clear all children first, then set text
-                destinationSubCostCenterRef.current.textContent = '';
-                destinationSubCostCenterRef.current.textContent = nameStr;
-            } else if (destinationSubCostCenterRef.current.textContent !== "N/A") {
-                destinationSubCostCenterRef.current.textContent = "N/A";
-            }
-        }
-    }, [completeTaskData, isOpen]);
 
     // Fetch complete task data with all includes when modal opens
     useEffect(() => {
@@ -179,46 +105,80 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                     // If this is a reallocation request, fetch the source budget balance directly
                     if (taskData.request_budget && 
                         taskData.request_budget.type === 'reallocation' && 
-                        taskData.request_budget.sub_cost_center &&
                         taskData.request_budget.fiscal_period_id &&
                         taskData.request_budget.department_id &&
                         taskData.request_budget.cost_center_id) {
                         
-                        try {
-                            // Fetch the approved budget for the "Moving To" sub cost center
-                            const sourceBudgetResponse = await axios.get('/api/v1/request-budgets', {
-                                params: {
-                                    'filter[fiscal_period_id]': taskData.request_budget.fiscal_period_id,
-                                    'filter[department_id]': taskData.request_budget.department_id,
-                                    'filter[cost_center_id]': taskData.request_budget.cost_center_id,
-                                    'filter[sub_cost_center]': taskData.request_budget.sub_cost_center,
-                                    'filter[status]': 'Approved',
-                                    per_page: 1
+                        // Fetch the approved budget for the "Moving To" sub cost center (destination)
+                        const movingToSubCostCenter = taskData.request_budget.updated_destination_sub_cost_center 
+                            ?? taskData.request_budget.reallocate_to_sub_cost_center;
+                        
+                        if (movingToSubCostCenter) {
+                            try {
+                                const destinationBudgetResponse = await axios.get('/api/v1/request-budgets', {
+                                    params: {
+                                        'filter[fiscal_period_id]': taskData.request_budget.fiscal_period_id,
+                                        'filter[department_id]': taskData.request_budget.department_id,
+                                        'filter[cost_center_id]': taskData.request_budget.cost_center_id,
+                                        'filter[sub_cost_center]': movingToSubCostCenter,
+                                        'filter[status]': 'Approved',
+                                        'filter[type]': '!=reallocation',
+                                        per_page: 1
+                                    }
+                                });
+                                
+                                if (destinationBudgetResponse.data.data && destinationBudgetResponse.data.data.length > 0) {
+                                    const approvedBudget = destinationBudgetResponse.data.data[0];
+                                    setMovingToBudgetBalance(approvedBudget.balance_amount);
+                                } else {
+                                    setMovingToBudgetBalance(null);
                                 }
-                            });
-                            
-                            if (sourceBudgetResponse.data.data && sourceBudgetResponse.data.data.length > 0) {
-                                // Find the non-reallocation budget (exclude reallocation type)
-                                const approvedBudget = sourceBudgetResponse.data.data.find(
-                                    budget => budget.type !== 'reallocation'
-                                ) || sourceBudgetResponse.data.data[0];
-                                setSourceBudgetBalance(approvedBudget.balance_amount);
-                            } else {
-                                setSourceBudgetBalance(null);
+                            } catch (error) {
+                                console.error("Error fetching destination budget balance:", error);
+                                setMovingToBudgetBalance(null);
                             }
-                        } catch (error) {
-                            console.error("Error fetching source budget balance:", error);
-                            setSourceBudgetBalance(null);
+                        } else {
+                            setMovingToBudgetBalance(null);
+                        }
+                        
+                        // Fetch the approved budget for the "Moved From" sub cost center (source)
+                        if (taskData.request_budget.sub_cost_center) {
+                            try {
+                                const sourceBudgetResponse = await axios.get('/api/v1/request-budgets', {
+                                    params: {
+                                        'filter[fiscal_period_id]': taskData.request_budget.fiscal_period_id,
+                                        'filter[department_id]': taskData.request_budget.department_id,
+                                        'filter[cost_center_id]': taskData.request_budget.cost_center_id,
+                                        'filter[sub_cost_center]': taskData.request_budget.sub_cost_center,
+                                        'filter[status]': 'Approved',
+                                        'filter[type]': '!=reallocation',
+                                        per_page: 1
+                                    }
+                                });
+                                
+                                if (sourceBudgetResponse.data.data && sourceBudgetResponse.data.data.length > 0) {
+                                    const approvedBudget = sourceBudgetResponse.data.data[0];
+                                    setMovedFromBudgetBalance(approvedBudget.balance_amount);
+                                } else {
+                                    setMovedFromBudgetBalance(null);
+                                }
+                            } catch (error) {
+                                console.error("Error fetching moved from budget balance:", error);
+                                setMovedFromBudgetBalance(null);
+                            }
+                        } else {
+                            setMovedFromBudgetBalance(null);
                         }
                     } else {
-                        setSourceBudgetBalance(null);
+                        setMovingToBudgetBalance(null);
+                        setMovedFromBudgetBalance(null);
                     }
                     
                 } catch (error) {
                     console.error("Error fetching complete task data:", error);
                     // Fallback to original task data if fetch fails
                     setCompleteTaskData(task);
-                    setSourceBudgetBalance(null);
+                    setMovingToBudgetBalance(null);
                 }
             };
 
@@ -1321,7 +1281,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Moving To Sub Cost Center:</span>
-                                                <span className="font-medium ml-2">{currentTask.request_budget.sub_cost_center_details?.name || "N/A"}</span>
+                                                <span className="font-medium ml-2">{currentTask.request_budget.updated_destination_sub_cost_center_details?.name || currentTask.request_budget.reallocate_to_sub_cost_center_details?.name || "N/A"}</span>
                                             </div>
                                             {currentTask.request_budget.purchase_order && (
                                                 <div>
@@ -1343,88 +1303,42 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 </div>
                                             )}
                                             <div>
-                                                <span className="text-gray-600">Reallocation Amount:</span>
-                                                <span className="font-medium ml-2 text-red-600">
-                                                    {parseFloat(currentTask.request_budget.reallocate_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </span>
-                                            </div>
-                                            <div>
                                                 <span className="text-gray-600">Current Budget Amount:</span>
                                                 <span className="font-medium ml-2">
                                                     {(() => {
-                                                        // Use the fetched source budget balance (most accurate)
-                                                        if (sourceBudgetBalance !== null && sourceBudgetBalance !== undefined) {
-                                                            return parseFloat(sourceBudgetBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                        // Use the fetched destination budget balance (Moving To sub cost center)
+                                                        if (movingToBudgetBalance !== null && movingToBudgetBalance !== undefined) {
+                                                            return parseFloat(movingToBudgetBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                                         }
                                                         
-                                                        // Fallback to source_budget_request if available
-                                                        const sourceBudget = currentTask.request_budget.source_budget_request;
-                                                        if (sourceBudget && 'balance_amount' in sourceBudget) {
-                                                            const balance = parseFloat(sourceBudget.balance_amount || 0);
-                                                            return balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                                                        }
-                                                        
-                                                        // Fallback to old_balance
-                                                        const oldBalance = currentTask.request_budget.old_balance;
-                                                        if (oldBalance !== null && oldBalance !== undefined) {
-                                                            return parseFloat(oldBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                        // Fallback: try to get from reallocate_to_sub_cost_center_details if available
+                                                        const destinationBudget = currentTask.request_budget.reallocate_to_sub_cost_center_details;
+                                                        if (destinationBudget && destinationBudget.total_balance) {
+                                                            return parseFloat(destinationBudget.total_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                                         }
                                                         
                                                         return "N/A";
                                                     })()}
                                                 </span>
                                             </div>
-                                            {(() => {
+                                                    {(() => {
                                                 // Calculate the value first to check if it's N/A
+                                                // "Moved From" should show the SOURCE sub cost center (sub_cost_center), not the destination
+                                                // In a reallocation: sub_cost_center = source (where budget is taken FROM)
+                                                //                  reallocate_to_sub_cost_center = destination (where budget is moved TO)
                                                 let takingFromValue = "N/A";
                                                 if (currentTask?.request_budget) {
-                                                    const updatedName = currentTask.request_budget.updated_destination_sub_cost_center_details?.name;
-                                                    const reallocateName = currentTask.request_budget.reallocate_to_sub_cost_center_details?.name;
-                                                    let name = updatedName || reallocateName || null;
-                                                    
+                                                        // Use sub_cost_center_details (the source where budget is taken FROM)
+                                                        // This is the "Move From" sub cost center from the reallocation form
+                                                        // sub_cost_center = source (where budget is taken FROM)
+                                                        // reallocate_to_sub_cost_center = destination (where budget is moved TO)
+                                                        const sourceName = currentTask.request_budget.sub_cost_center_details?.name;
+                                                        let name = sourceName || null;
+                                                        
                                                     if (name) {
-                                                        // Convert to string and trim
-                                                        let nameStr = String(name).trim();
-                                                        
-                                                        // Get the cost center ID
-                                                        const costCenterId = currentTask.request_budget.updated_destination_sub_cost_center_details?.id || 
-                                                                            currentTask.request_budget.reallocate_to_sub_cost_center_details?.id;
-                                                        
-                                                        // AGGRESSIVE CLEANING: Remove ANY trailing "0" that's not part of a number
-                                                        // This handles the case where "0" (from ID 90) might be appended
-                                                        let cleaned = nameStr;
-                                                        
-                                                        // Remove trailing "0" if it exists and the character before it is not a digit
-                                                        while (cleaned.length > 1 && cleaned.endsWith('0')) {
-                                                            const charBeforeZero = cleaned.charAt(cleaned.length - 2);
-                                                            if (!/\d/.test(charBeforeZero)) {
-                                                                cleaned = cleaned.slice(0, -1);
-                                                            } else {
-                                                                break; // It's part of a number like "10", "20", etc
-                                                            }
-                                                        }
-                                                        
-                                                        // If ID exists and name ends with the last digit of ID, remove it
-                                                        if (costCenterId) {
-                                                            const idStr = String(costCenterId);
-                                                            const lastDigitOfId = idStr.charAt(idStr.length - 1);
-                                                            if (cleaned.endsWith(lastDigitOfId) && cleaned.length > 1) {
-                                                                const charBeforeLastDigit = cleaned.charAt(cleaned.length - 2);
-                                                                if (!/\d/.test(charBeforeLastDigit)) {
-                                                                    cleaned = cleaned.slice(0, -1);
-                                                                }
-                                                            }
-                                                        }
-                                                        
-                                                        // Final pass: Remove any trailing "0" one more time (safety net)
-                                                        if (cleaned.endsWith('0') && cleaned.length > 1) {
-                                                            const charBeforeZero = cleaned.charAt(cleaned.length - 2);
-                                                            if (!/\d/.test(charBeforeZero)) {
-                                                                cleaned = cleaned.slice(0, -1);
-                                                            }
-                                                        }
-                                                        
-                                                        takingFromValue = cleaned;
+                                                        // Use the name directly from sub_cost_center_details (source)
+                                                        // No aggressive cleaning needed - the name should be correct
+                                                        takingFromValue = String(name).trim();
                                                     }
                                                 }
                                                 
@@ -1433,24 +1347,58 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                     return null;
                                                 }
                                                 
+                                                // Get source budget amount (for "Moved From" sub cost center)
+                                                const movedFromBudgetAmount = (() => {
+                                                    // Use the fetched moved from budget balance (most accurate)
+                                                    if (movedFromBudgetBalance !== null && movedFromBudgetBalance !== undefined) {
+                                                        return parseFloat(movedFromBudgetBalance);
+                                                    }
+                                                    
+                                                    // Fallback to old_balance (this is the source budget's old balance)
+                                                    const oldBalance = currentTask.request_budget.old_balance;
+                                                    if (oldBalance !== null && oldBalance !== undefined) {
+                                                        return parseFloat(oldBalance);
+                                                    }
+                                                    
+                                                    return null;
+                                                })();
+                                                
                                                 return (
-                                                    <div className="col-span-2">
-                                                        <span className="text-gray-600">Taking From Sub Cost Center:</span>
-                                                        <span 
-                                                            ref={destinationSubCostCenterRef}
-                                                            className="font-medium ml-2"
-                                                            style={{ position: 'relative' }}
-                                                        >
-                                                            {takingFromValue}
-                                                        </span>
+                                                    <>
+                                                        <div>
+                                                            <span className="text-gray-600">Moved From Sub Cost Center:</span>
+                                                            <span className="font-medium ml-2">
+                                                                {takingFromValue}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-gray-600">Current Budget:</span>
+                                                            <span className="font-medium ml-2">
+                                                                {movedFromBudgetAmount !== null && movedFromBudgetAmount !== 0
+                                                                    ? movedFromBudgetAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                                                    : "N/A"}
+                                                            </span>
+                                                        </div>
+                                                        <div className="col-span-2">
+                                                            <span className="text-gray-600">Reallocation Amount:</span>
+                                                            <span className="font-medium ml-2 text-red-600">
+                                                                {(() => {
+                                                                    const amount = currentTask.request_budget.reallocate_amount;
+                                                                    if (amount && parseFloat(amount) > 0) {
+                                                                        return parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                                    }
+                                                                    return "N/A";
+                                                                })()}
+                                                            </span>
+                                                        </div>
                                                         {currentTask.request_budget.sub_cost_center_updated && currentTask.request_budget.updated_by_user && (
-                                                            <div className="mt-2 text-sm">
-                                                                <span className="font-bold text-red-600">
-                                                                    Changed To {currentTask.request_budget.updated_destination_sub_cost_center_details?.name || currentTask.request_budget.reallocate_to_sub_cost_center_details?.name || "N/A"} by {currentTask.request_budget.updated_by_user?.name || "Previous Approver"}
+                                                            <div className="col-span-2 mt-2 text-sm">
+                                                                <span className="text-red-600">
+                                                                    Moved From {currentTask.request_budget.sub_cost_center_details?.name || "N/A"} by <span className="font-bold text-red-900">{currentTask.request_budget.updated_by_user?.name || "Previous Approver"}</span>
                                                                 </span>
                                                             </div>
                                                         )}
-                                                    </div>
+                                                    </>
                                                 );
                                             })()}
                                         </div>

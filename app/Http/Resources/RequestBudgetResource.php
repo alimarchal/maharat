@@ -46,6 +46,7 @@ class RequestBudgetResource extends JsonResource
             'status' => $this->status,
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,
+            'purchase_order_id' => $this->purchase_order_id,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,

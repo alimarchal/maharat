@@ -1479,21 +1479,23 @@ class TaskController extends Controller
 
                                 // Find source and destination approved budget requests
                                 // Source = "Taking From Sub Cost Center" (where budget is subtracted from)
-                                $takingFromSubCostCenter = $budgetRequest->updated_destination_sub_cost_center 
-                                    ?? $budgetRequest->reallocate_to_sub_cost_center;
-                                
+                                // This is the sub_cost_center field (the original source)
                                 $sourceBudget = RequestBudget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
                                     ->where('department_id', $budgetRequest->department_id)
                                     ->where('cost_center_id', $budgetRequest->cost_center_id)
-                                    ->where('sub_cost_center', $takingFromSubCostCenter)
+                                    ->where('sub_cost_center', $budgetRequest->sub_cost_center)
                                     ->where('status', 'Approved')
                                     ->first();
 
                                 // Destination = "Moving To Sub Cost Center" (where budget is added to)
+                                // This is the reallocate_to_sub_cost_center (or updated_destination_sub_cost_center if updated)
+                                $movingToSubCostCenter = $budgetRequest->updated_destination_sub_cost_center 
+                                    ?? $budgetRequest->reallocate_to_sub_cost_center;
+                                
                                 $destinationBudget = RequestBudget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
                                     ->where('department_id', $budgetRequest->department_id)
                                     ->where('cost_center_id', $budgetRequest->cost_center_id)
-                                    ->where('sub_cost_center', $budgetRequest->sub_cost_center)
+                                    ->where('sub_cost_center', $movingToSubCostCenter)
                                     ->where('status', 'Approved')
                                     ->first();
 
