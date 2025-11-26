@@ -1478,21 +1478,22 @@ class TaskController extends Controller
                                 ]);
 
                                 // Find source and destination approved budget requests
+                                // Source = "Taking From Sub Cost Center" (where budget is subtracted from)
+                                $takingFromSubCostCenter = $budgetRequest->updated_destination_sub_cost_center 
+                                    ?? $budgetRequest->reallocate_to_sub_cost_center;
+                                
                                 $sourceBudget = RequestBudget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
                                     ->where('department_id', $budgetRequest->department_id)
                                     ->where('cost_center_id', $budgetRequest->cost_center_id)
-                                    ->where('sub_cost_center', $budgetRequest->sub_cost_center)
+                                    ->where('sub_cost_center', $takingFromSubCostCenter)
                                     ->where('status', 'Approved')
                                     ->first();
 
-                                // Use updated destination if it was changed, otherwise use original
-                                $destinationSubCostCenter = $budgetRequest->updated_destination_sub_cost_center 
-                                    ?? $budgetRequest->reallocate_to_sub_cost_center;
-                                
+                                // Destination = "Moving To Sub Cost Center" (where budget is added to)
                                 $destinationBudget = RequestBudget::where('fiscal_period_id', $budgetRequest->fiscal_period_id)
                                     ->where('department_id', $budgetRequest->department_id)
                                     ->where('cost_center_id', $budgetRequest->cost_center_id)
-                                    ->where('sub_cost_center', $destinationSubCostCenter)
+                                    ->where('sub_cost_center', $budgetRequest->sub_cost_center)
                                     ->where('status', 'Approved')
                                     ->first();
 
@@ -1503,15 +1504,13 @@ class TaskController extends Controller
                                     $sourceOldBalance = $sourceBudget->balance_amount;
                                     $destinationOldBalance = $destinationBudget->balance_amount;
 
-                                    // Update source: approved_amount = approved_amount - reallocate_amount
+                                    // Update source (Taking From): subtract reallocate_amount
                                     $sourceBudget->approved_amount = $sourceBudget->approved_amount - $budgetRequest->reallocate_amount;
-                                    // Update source: balance_amount = balance_amount - reallocate_amount
                                     $sourceBudget->balance_amount = $sourceBudget->balance_amount - $budgetRequest->reallocate_amount;
                                     $sourceBudget->save();
 
-                                    // Update destination: approved_amount = approved_amount + reallocate_amount
+                                    // Update destination (Moving To): add reallocate_amount
                                     $destinationBudget->approved_amount = $destinationBudget->approved_amount + $budgetRequest->reallocate_amount;
-                                    // Update destination: balance_amount = balance_amount + reallocate_amount
                                     $destinationBudget->balance_amount = $destinationBudget->balance_amount + $budgetRequest->reallocate_amount;
                                     $destinationBudget->save();
 
