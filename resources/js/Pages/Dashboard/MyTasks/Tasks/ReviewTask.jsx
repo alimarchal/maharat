@@ -50,15 +50,21 @@ const ReviewTask = () => {
             
             // If this is a reallocation request, load available alternatives
             if (response.data.data.process?.title === "Budget Reallocate Approval" && 
-                response.data.data.request_budget?.type === 'reallocation' &&
-                response.data.data.request_budget?.available_alternatives_json) {
-                try {
-                    const alternatives = JSON.parse(response.data.data.request_budget.available_alternatives_json);
-                    setAvailableAlternatives(alternatives || []);
-                } catch (e) {
-                    console.error("Error parsing alternatives:", e);
+                response.data.data.request_budget?.type === 'reallocation') {
+                if (response.data.data.request_budget?.available_alternatives_json) {
+                    try {
+                        const alternatives = JSON.parse(response.data.data.request_budget.available_alternatives_json);
+                        setAvailableAlternatives(Array.isArray(alternatives) ? alternatives : []);
+                    } catch (e) {
+                        console.error("Error parsing alternatives:", e);
+                        setAvailableAlternatives([]);
+                    }
+                } else {
+                    // If available_alternatives_json doesn't exist, set empty array
                     setAvailableAlternatives([]);
                 }
+            } else {
+                setAvailableAlternatives([]);
             }
             
             console.log("=== FRONTEND: TASK LOADED ===", {
@@ -591,19 +597,77 @@ const ReviewTask = () => {
     return (
         <div className="flex flex-col items-center w-full">
             {/* Warning message when no alternatives are available for reallocation - shown above Task Review Details */}
-            {/* Only show this warning for reallocation requests created from purchase orders */}
             {(() => {
                 const isReallocation = taskData?.process?.title === "Budget Reallocate Approval" && 
                                       taskData?.request_budget?.type === 'reallocation';
-                const isFromPurchaseOrder = taskData?.request_budget?.purchase_order_id !== null && 
-                                          taskData?.request_budget?.purchase_order_id !== undefined;
+                // Check if this reallocation is from a purchase order (has purchase_order_id or purchase_order relationship)
+                const hasPurchaseOrder = !!(taskData?.request_budget?.purchase_order_id || taskData?.request_budget?.purchase_order);
                 const subCostCenterUpdated = taskData?.request_budget?.sub_cost_center_updated;
-                const noAlternativesAvailable = isReallocation && 
-                                               isFromPurchaseOrder &&
-                                               !subCostCenterUpdated && 
-                                               availableAlternatives.length === 0;
+                const reallocateAmount = parseFloat(taskData?.request_budget?.reallocate_amount || 0);
+                
+                // DETAILED DEBUG LOGGING
+                console.log("=== REALLOCATION WARNING CHECK - DETAILED ===", {
+                    taskDataExists: !!taskData,
+                    processTitle: taskData?.process?.title,
+                    requestBudgetType: taskData?.request_budget?.type,
+                    isReallocation,
+                    purchase_order_id: taskData?.request_budget?.purchase_order_id,
+                    purchaseOrder: taskData?.request_budget?.purchaseOrder,
+                    hasPurchaseOrder,
+                    subCostCenterUpdated,
+                    reallocateAmount,
+                    availableAlternativesCount: availableAlternatives.length,
+                    availableAlternatives: availableAlternatives,
+                    available_alternatives_json: taskData?.request_budget?.available_alternatives_json
+                });
+                
+                // Only show warning for purchase order reallocations that don't have alternatives with sufficient budget
+                if (!isReallocation) {
+                    console.log("❌ NOT SHOWING: Not a reallocation request");
+                    return null;
+                }
+                if (!hasPurchaseOrder) {
+                    console.log("❌ NOT SHOWING: No purchase order linked");
+                    return null;
+                }
+                if (subCostCenterUpdated) {
+                    console.log("❌ NOT SHOWING: Sub cost center already updated");
+                    return null;
+                }
+                if (reallocateAmount <= 0) {
+                    console.log("❌ NOT SHOWING: Reallocation amount is 0 or invalid");
+                    return null;
+                }
+                
+                // Check if alternatives have sufficient budget for the reallocation amount
+                // availableAlternatives comes from available_alternatives_json stored when PO was created
+                // If empty array, it means no alternatives were found at PO creation time
+                // If array has items but none have sufficient budget, warning should show
+                const hasSufficientAlternatives = availableAlternatives.length > 0 && availableAlternatives.some(alt => {
+                    const availableAmount = parseFloat(alt.available_amount || 0);
+                    const isSufficient = availableAmount >= reallocateAmount && availableAmount > 0;
+                    console.log("Checking alternative:", {
+                        sub_cost_center_id: alt.sub_cost_center_id,
+                        sub_cost_center_name: alt.sub_cost_center_name,
+                        available_amount: availableAmount,
+                        reallocate_amount: reallocateAmount,
+                        isSufficient
+                    });
+                    return isSufficient;
+                });
+                
+                // Show warning when there are NO alternatives OR no alternatives with sufficient budget
+                const noAlternativesAvailable = availableAlternatives.length === 0 || !hasSufficientAlternatives;
+                
+                console.log("=== FINAL WARNING DECISION ===", {
+                    hasSufficientAlternatives,
+                    noAlternativesAvailable,
+                    willShowWarning: noAlternativesAvailable,
+                    reason: availableAlternatives.length === 0 ? "No alternatives found" : "No alternatives with sufficient budget"
+                });
                 
                 if (noAlternativesAvailable) {
+                    console.log("✅ SHOWING WARNING: No alternatives available or none have sufficient budget");
                     return (
                         <div className="w-full mb-6 p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
                             <div className="flex items-start">
@@ -776,26 +840,29 @@ const ReviewTask = () => {
                                         if (isReallocation) {
                                             // Check if sub cost center has been updated (destination selected)
                                             const subCostCenterUpdated = taskData?.request_budget?.sub_cost_center_updated;
+                                            const hasPurchaseOrder = !!taskData?.request_budget?.purchase_order_id;
+                                            const reallocateAmount = parseFloat(taskData?.request_budget?.reallocate_amount || 0);
                                             
-                                            // Check if this reallocation is from a purchase order
-                                            const isFromPurchaseOrder = taskData?.request_budget?.purchase_order_id !== null && 
-                                                                      taskData?.request_budget?.purchase_order_id !== undefined;
+                                            // Check if alternatives have sufficient budget for the reallocation amount
+                                            const hasSufficientAlternatives = availableAlternatives.some(alt => {
+                                                const availableAmount = parseFloat(alt.available_amount || 0);
+                                                return availableAmount >= reallocateAmount;
+                                            });
                                             
-                                            // Show "Update Sub Cost Center" only if not updated yet and alternatives exist
+                                            // Show "Update Sub Cost Center" only if not updated yet and alternatives with sufficient budget exist
                                             const canUpdateSubCostCenter = !subCostCenterUpdated && 
-                                                                          availableAlternatives.length > 0;
+                                                                          hasSufficientAlternatives;
                                             
-                                            // Check if there are no alternatives and sub cost center hasn't been updated
-                                            // Only restrict options if this is from a purchase order
-                                            const noAlternativesAvailable = isFromPurchaseOrder &&
-                                                                           !subCostCenterUpdated && 
-                                                                           availableAlternatives.length === 0;
+                                            // Check if there are no alternatives with sufficient budget for purchase order reallocation
+                                            const noAlternativesAvailable = !subCostCenterUpdated && 
+                                                                           hasPurchaseOrder &&
+                                                                           (availableAlternatives.length === 0 || !hasSufficientAlternatives);
                                             
                                             const baseOptions = [];
                                             
                                             if (noAlternativesAvailable) {
-                                                // If no alternatives exist and destination hasn't been set, only allow Reject
-                                                // This prevents the user from being stuck (only for PO-based reallocations)
+                                                // If no alternatives with sufficient budget exist for purchase order reallocation, only allow Reject
+                                                // This prevents the user from being stuck
                                                 // Only show "Reject" - no other options available
                                                 baseOptions.push({ id: "Reject", label: "Reject" });
                                                 // Do NOT add "Refer" option when no alternatives exist

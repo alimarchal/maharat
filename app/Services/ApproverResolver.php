@@ -44,12 +44,12 @@ class ApproverResolver
         // Fallback: Check if process_step_user table exists and query it
         try {
             if (DB::getSchemaBuilder()->hasTable('process_step_user')) {
-                $approver = DB::table('users')
-                    ->join('process_step_user', 'users.id', '=', 'process_step_user.user_id')
-                    ->where('process_step_user.process_step_id', $step->id)
-                    ->select('users.id')
-                    ->first();
-                return $approver->id ?? null;
+        $approver = DB::table('users')
+            ->join('process_step_user', 'users.id', '=', 'process_step_user.user_id')
+            ->where('process_step_user.process_step_id', $step->id)
+            ->select('users.id')
+            ->first();
+        return $approver->id ?? null;
             }
         } catch (\Exception $e) {
             // Table doesn't exist, return null

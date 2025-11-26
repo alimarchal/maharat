@@ -32,38 +32,6 @@ const FileDisplay = ({ file, fileName }) => {
     );
 };
 
-// Status badge component for Purchase Orders
-const StatusBadge = ({ status }) => {
-    let badgeClass = "px-3 py-1 rounded-full text-xs font-medium";
-
-    switch (status?.toLowerCase()) {
-        case "approved":
-            badgeClass += " bg-green-100 text-green-800";
-            break;
-        case "pending":
-            badgeClass += " bg-yellow-100 text-yellow-800";
-            break;
-        case "draft":
-            badgeClass += " bg-gray-100 text-gray-800";
-            break;
-        case "rejected":
-            badgeClass += " bg-red-100 text-red-800";
-            break;
-        case "pending reallocation":
-            badgeClass += " bg-purple-100 text-purple-800";
-            break;
-        default:
-            badgeClass += " bg-gray-300 text-gray-800";
-            break;
-    }
-
-    return (
-        <span className={badgeClass}>
-            {status || "N/A"}
-        </span>
-    );
-};
-
 export default function PurchaseOrdersTable() {
     const { hasPermission } = usePermissions();
     const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -382,11 +350,10 @@ export default function PurchaseOrdersTable() {
                                 <th className="py-3 px-4">Supplier</th>
                                 <th className="py-3 px-4">Issue Date</th>
                                 <th className="py-3 px-4">Amount</th>
-                                <th className="py-3 px-2">Status</th>
                                 {/* <th className="py-3 px-4 text-center">
                                     Attachment
                                 </th> */}
-                                <th className="py-3 px-2 rounded-tr-2xl rounded-br-2xl text-center">
+                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center">
                                     Action
                                 </th>
                             </tr>
@@ -395,7 +362,7 @@ export default function PurchaseOrdersTable() {
                             {loading ? (
                                 <tr>
                                     <td
-                                        colSpan="8"
+                                        colSpan="7"
                                         className="text-center py-12"
                                     >
                                         <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
@@ -404,7 +371,7 @@ export default function PurchaseOrdersTable() {
                             ) : error ? (
                                 <tr>
                                     <td
-                                        colSpan="8"
+                                        colSpan="7"
                                         className="text-center text-red-500 font-medium py-4"
                                     >
                                         {error}
@@ -435,9 +402,6 @@ export default function PurchaseOrdersTable() {
                                                 return sum.toLocaleString();
                                             })()}
                                         </td>
-                                        <td className="px-2 py-4">
-                                            <StatusBadge status={order.status} />
-                                        </td>
                                         {/* <td className="px-3 py-4 text-center">
                                             <div className="flex justify-center">
                                                 {order.formatted_attachment ? (
@@ -459,7 +423,7 @@ export default function PurchaseOrdersTable() {
                                                 )}
                                             </div>
                                         </td> */}
-                                        <td className="px-2 py-4 text-center">
+                                        <td className="px-3 py-4 text-center">
                                             <div className="flex flex-col items-center justify-center h-full">
                                                 <button
                                                     className="w-4 h-4"
@@ -483,7 +447,7 @@ export default function PurchaseOrdersTable() {
                             ) : (
                                 <tr>
                                     <td
-                                        colSpan="8"
+                                        colSpan="7"
                                         className="text-center py-4"
                                     >
                                         No purchase orders available.
