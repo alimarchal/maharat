@@ -1506,17 +1506,19 @@ class TaskController extends Controller
                                     $sourceOldBalance = $sourceBudget->balance_amount;
                                     $destinationOldBalance = $destinationBudget->balance_amount;
 
-                                    // Update source (Taking From): add reallocate_amount (FIXED: was subtracting, now adding)
-                                    $sourceBudget->approved_amount = $sourceBudget->approved_amount + $budgetRequest->reallocate_amount;
-                                    $sourceBudget->balance_amount = $sourceBudget->balance_amount + $budgetRequest->reallocate_amount;
+                                    // Update source (Move From / Taking From): subtract reallocate_amount
+                                    // Budget is being taken FROM the source, so subtract
+                                    $sourceBudget->approved_amount = $sourceBudget->approved_amount - $budgetRequest->reallocate_amount;
+                                    $sourceBudget->balance_amount = $sourceBudget->balance_amount - $budgetRequest->reallocate_amount;
                                     $sourceBudget->save();
 
-                                    // Update destination (Moving To): subtract reallocate_amount (FIXED: was adding, now subtracting)
-                                    $destinationBudget->approved_amount = $destinationBudget->approved_amount - $budgetRequest->reallocate_amount;
-                                    $destinationBudget->balance_amount = $destinationBudget->balance_amount - $budgetRequest->reallocate_amount;
+                                    // Update destination (Move To / Moving To): add reallocate_amount
+                                    // Budget is being moved TO the destination, so add
+                                    $destinationBudget->approved_amount = $destinationBudget->approved_amount + $budgetRequest->reallocate_amount;
+                                    $destinationBudget->balance_amount = $destinationBudget->balance_amount + $budgetRequest->reallocate_amount;
                                     $destinationBudget->save();
                                     
-                                    Log::info('=== REALLOCATION BUDGET UPDATES (FIXED) ===', [
+                                    Log::info('=== REALLOCATION BUDGET UPDATES ===', [
                                         'source_budget_id' => $sourceBudget->id,
                                         'source_sub_cost_center' => $sourceBudget->sub_cost_center,
                                         'source_approved_before' => $sourceOldApproved,
@@ -1530,7 +1532,7 @@ class TaskController extends Controller
                                         'destination_balance_before' => $destinationOldBalance,
                                         'destination_balance_after' => $destinationBudget->balance_amount,
                                         'reallocate_amount' => $budgetRequest->reallocate_amount,
-                                        'note' => 'FIXED: Source now adds, Destination now subtracts (operations swapped)'
+                                        'note' => 'Source: subtracts (budget taken from), Destination: adds (budget moved to)'
                                     ]);
 
                                     // Update history record

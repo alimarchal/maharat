@@ -312,6 +312,9 @@ class RequestBudgetController extends Controller
                             ->first();
                             
                         if ($sourceBudget && $destinationBudget) {
+                            // Determine source type based on whether this is from purchase order
+                            $sourceType = $requestBudget->purchase_order_id ? 'purchase_order' : 'budget_reallocation';
+                            
                             $newHistoryRecord = \App\Models\BudgetReallocationHistory::create([
                                 'reallocation_request_id' => $requestBudget->id,
                                 'source_budget_request_id' => $sourceBudget->id,
@@ -325,7 +328,7 @@ class RequestBudgetController extends Controller
                                 'destination_old_approved_amount' => $destinationBudget->approved_amount ?? null,
                                 'source_old_requested_amount' => $sourceBudget->requested_amount ?? null,
                                 'destination_old_requested_amount' => $destinationBudget->requested_amount ?? null,
-                                'source_type' => 'budget_reallocation',
+                                'source_type' => $sourceType,
                                 'purchase_order_id' => $requestBudget->purchase_order_id,
                                 'status' => $requestBudget->status ?? 'Draft',
                                 'notes' => $data['reason_for_increase'] ?? $requestBudget->reason_for_increase ?? null,
@@ -483,71 +486,138 @@ class RequestBudgetController extends Controller
                 ], Response::HTTP_BAD_REQUEST);
             }
 
-            $newDestinationId = $request->input('new_destination_sub_cost_center_id');
-            if (!$newDestinationId) {
+            $newSourceId = $request->input('new_destination_sub_cost_center_id'); // Note: This is actually the FROM source (approver's selection)
+            if (!$newSourceId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'New destination sub cost center ID is required'
+                    'message' => 'New source sub cost center ID is required'
                 ], Response::HTTP_BAD_REQUEST);
             }
 
-            // Validate that the new destination is in the available alternatives
-            $availableAlternatives = json_decode($requestBudget->available_alternatives_json, true) ?? [];
-            $isValidAlternative = false;
-            foreach ($availableAlternatives as $alt) {
-                if (($alt['sub_cost_center_id'] ?? null) == $newDestinationId) {
-                    $isValidAlternative = true;
-                    break;
+            // For purchase order reallocations: approver selects the FROM subcost center, PO's subcost center is the TO
+            // For regular reallocations: approver selects the TO subcost center, existing sub_cost_center is the FROM
+            $isPurchaseOrderReallocation = $requestBudget->purchase_order_id !== null;
+            
+            if ($isPurchaseOrderReallocation) {
+                // Purchase order reallocation: approver selects FROM, PO's subcost center is TO
+                // Validate that the selected source is in the available alternatives
+                $availableAlternatives = json_decode($requestBudget->available_alternatives_json, true) ?? [];
+                $isValidAlternative = false;
+                foreach ($availableAlternatives as $alt) {
+                    if (($alt['sub_cost_center_id'] ?? null) == $newSourceId) {
+                        $isValidAlternative = true;
+                        break;
+                    }
                 }
+
+                if (!$isValidAlternative) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Selected source sub cost center is not in the available alternatives'
+                    ], Response::HTTP_BAD_REQUEST);
+                }
+
+                // Store original source if not already stored
+                if (!$requestBudget->original_destination_sub_cost_center) {
+                    $requestBudget->original_destination_sub_cost_center = $requestBudget->sub_cost_center ?? $newSourceId;
+                }
+
+                // Find source budget (FROM - where budget is taken from - approver's selection)
+                $sourceBudget = RequestBudget::where('fiscal_period_id', $requestBudget->fiscal_period_id)
+                    ->where('department_id', $requestBudget->department_id)
+                    ->where('cost_center_id', $requestBudget->cost_center_id)
+                    ->where('sub_cost_center', $newSourceId)
+                    ->where('status', 'Approved')
+                    ->first();
+
+                if (!$sourceBudget) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Source budget request not found or not approved'
+                    ], Response::HTTP_BAD_REQUEST);
+                }
+
+                // Find destination budget (TO - where budget is moved to - PO's subcost center)
+                $destinationBudget = RequestBudget::where('fiscal_period_id', $requestBudget->fiscal_period_id)
+                    ->where('department_id', $requestBudget->department_id)
+                    ->where('cost_center_id', $requestBudget->cost_center_id)
+                    ->where('sub_cost_center', $requestBudget->reallocate_to_sub_cost_center)
+                    ->where('status', 'Approved')
+                    ->first();
+
+                if (!$destinationBudget) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Destination budget request not found or not approved'
+                    ], Response::HTTP_BAD_REQUEST);
+                }
+
+                // Update source (FROM - approver's selection)
+                $requestBudget->sub_cost_center = $newSourceId;
+                // Note: updated_destination_sub_cost_center is not updated for PO reallocations
+                // because the destination (TO) is already set to PO's subcost center in reallocate_to_sub_cost_center
+                $requestBudget->sub_cost_center_updated = true;
+                $requestBudget->updated_by_user_id = auth()->id();
+            } else {
+                // Regular reallocation: approver selects TO, existing sub_cost_center is FROM
+                // Validate that the new destination is in the available alternatives
+                $availableAlternatives = json_decode($requestBudget->available_alternatives_json, true) ?? [];
+                $isValidAlternative = false;
+                foreach ($availableAlternatives as $alt) {
+                    if (($alt['sub_cost_center_id'] ?? null) == $newSourceId) {
+                        $isValidAlternative = true;
+                        break;
+                    }
+                }
+
+                if (!$isValidAlternative) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Selected destination is not in the available alternatives'
+                    ], Response::HTTP_BAD_REQUEST);
+                }
+
+                // Store original destination if not already stored
+                if (!$requestBudget->original_destination_sub_cost_center) {
+                    $requestBudget->original_destination_sub_cost_center = $requestBudget->reallocate_to_sub_cost_center ?? $newSourceId;
+                }
+
+                // Find source budget (FROM - existing sub_cost_center)
+                $sourceBudget = RequestBudget::where('fiscal_period_id', $requestBudget->fiscal_period_id)
+                    ->where('department_id', $requestBudget->department_id)
+                    ->where('cost_center_id', $requestBudget->cost_center_id)
+                    ->where('sub_cost_center', $requestBudget->sub_cost_center)
+                    ->where('status', 'Approved')
+                    ->first();
+
+                if (!$sourceBudget) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Source budget request not found or not approved'
+                    ], Response::HTTP_BAD_REQUEST);
+                }
+
+                // Find destination budget (TO - approver's selection)
+                $destinationBudget = RequestBudget::where('fiscal_period_id', $requestBudget->fiscal_period_id)
+                    ->where('department_id', $requestBudget->department_id)
+                    ->where('cost_center_id', $requestBudget->cost_center_id)
+                    ->where('sub_cost_center', $newSourceId)
+                    ->where('status', 'Approved')
+                    ->first();
+
+                if (!$destinationBudget) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Destination budget request not found or not approved'
+                    ], Response::HTTP_BAD_REQUEST);
+                }
+
+                // Update destination (TO - approver's selection)
+                $requestBudget->reallocate_to_sub_cost_center = $newSourceId;
+                $requestBudget->updated_destination_sub_cost_center = $newSourceId;
+                $requestBudget->sub_cost_center_updated = true;
+                $requestBudget->updated_by_user_id = auth()->id();
             }
-
-            if (!$isValidAlternative) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Selected destination is not in the available alternatives'
-                ], Response::HTTP_BAD_REQUEST);
-            }
-
-            // Store original destination if not already stored
-            // If reallocate_to_sub_cost_center is null, this is the first update, so set original to the new destination
-            if (!$requestBudget->original_destination_sub_cost_center) {
-                $requestBudget->original_destination_sub_cost_center = $requestBudget->reallocate_to_sub_cost_center ?? $newDestinationId;
-            }
-
-            // Find source and destination budgets
-            $sourceBudget = RequestBudget::where('fiscal_period_id', $requestBudget->fiscal_period_id)
-                ->where('department_id', $requestBudget->department_id)
-                ->where('cost_center_id', $requestBudget->cost_center_id)
-                ->where('sub_cost_center', $requestBudget->sub_cost_center)
-                ->where('status', 'Approved')
-                ->first();
-
-            if (!$sourceBudget) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Source budget request not found or not approved'
-                ], Response::HTTP_BAD_REQUEST);
-            }
-
-            $destinationBudget = RequestBudget::where('fiscal_period_id', $requestBudget->fiscal_period_id)
-                ->where('department_id', $requestBudget->department_id)
-                ->where('cost_center_id', $requestBudget->cost_center_id)
-                ->where('sub_cost_center', $newDestinationId)
-                ->where('status', 'Approved')
-                ->first();
-
-            if (!$destinationBudget) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Destination budget request not found or not approved'
-                ], Response::HTTP_BAD_REQUEST);
-            }
-
-            // Update destination
-            $requestBudget->reallocate_to_sub_cost_center = $newDestinationId;
-            $requestBudget->updated_destination_sub_cost_center = $newDestinationId;
-            $requestBudget->sub_cost_center_updated = true;
-            $requestBudget->updated_by_user_id = auth()->id();
             
             // Store old balances before any updates
             $requestBudget->old_balance = $sourceBudget->balance_amount;
@@ -582,11 +652,20 @@ class RequestBudgetController extends Controller
                     'created_by' => auth()->id(),
                 ]);
             } else {
-                // Update existing history record with new destination
-                $historyRecord->destination_budget_request_id = $destinationBudget->id;
-                $historyRecord->destination_old_balance = $destinationBudget->balance_amount;
-                $historyRecord->destination_old_approved_amount = $destinationBudget->approved_amount;
-                $historyRecord->destination_old_requested_amount = $destinationBudget->requested_amount;
+                // Update existing history record with new source (for PO) or destination (for regular)
+                if ($isPurchaseOrderReallocation) {
+                    // For PO: update source (FROM)
+                    $historyRecord->source_budget_request_id = $sourceBudget->id;
+                    $historyRecord->source_old_balance = $sourceBudget->balance_amount;
+                    $historyRecord->source_old_approved_amount = $sourceBudget->approved_amount;
+                    $historyRecord->source_old_requested_amount = $sourceBudget->requested_amount;
+                } else {
+                    // For regular: update destination (TO)
+                    $historyRecord->destination_budget_request_id = $destinationBudget->id;
+                    $historyRecord->destination_old_balance = $destinationBudget->balance_amount;
+                    $historyRecord->destination_old_approved_amount = $destinationBudget->approved_amount;
+                    $historyRecord->destination_old_requested_amount = $destinationBudget->requested_amount;
+                }
                 $historyRecord->source_old_requested_amount = $sourceBudget->requested_amount;
                 $historyRecord->source_type = $sourceType;
                 $historyRecord->purchase_order_id = $requestBudget->purchase_order_id;
@@ -594,10 +673,12 @@ class RequestBudgetController extends Controller
                 $historyRecord->save();
             }
 
-            Log::info('=== REALLOCATION DESTINATION UPDATED ===', [
+            Log::info('=== REALLOCATION UPDATED ===', [
                 'request_budget_id' => $requestBudget->id,
+                'is_purchase_order_reallocation' => $isPurchaseOrderReallocation,
                 'original_destination' => $requestBudget->original_destination_sub_cost_center,
-                'new_destination' => $newDestinationId,
+                'new_source' => $isPurchaseOrderReallocation ? $newSourceId : null,
+                'new_destination' => $isPurchaseOrderReallocation ? null : $newSourceId,
                 'source_budget_id' => $sourceBudget->id,
                 'destination_budget_id' => $destinationBudget->id,
                 'history_created' => !$historyRecord,
@@ -606,7 +687,9 @@ class RequestBudgetController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Destination sub cost center updated successfully',
+                'message' => $isPurchaseOrderReallocation 
+                    ? 'Source sub cost center updated successfully' 
+                    : 'Destination sub cost center updated successfully',
                 'data' => new RequestBudgetResource($requestBudget->fresh())
             ], Response::HTTP_OK);
 
