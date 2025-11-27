@@ -723,6 +723,19 @@ const QuotationModal = ({
                             error={errors.vat_amount}
                             disabled={true}
                         />
+                        <InputFloating
+                            label="Sub Total Amount"
+                            name="sub_total"
+                            type="number"
+                            value={(() => {
+                                const total = parseFloat(formData.total_amount || 0);
+                                const vat = parseFloat(formData.vat_amount || 0);
+                                const subTotal = total + vat;
+                                return subTotal > 0 ? subTotal.toFixed(2) : "";
+                            })()}
+                            onChange={handleChange}
+                            disabled={true}
+                        />
                     </div>
 
                     {/* RFQ Items Section */}

@@ -1506,15 +1506,32 @@ class TaskController extends Controller
                                     $sourceOldBalance = $sourceBudget->balance_amount;
                                     $destinationOldBalance = $destinationBudget->balance_amount;
 
-                                    // Update source (Taking From): subtract reallocate_amount
-                                    $sourceBudget->approved_amount = $sourceBudget->approved_amount - $budgetRequest->reallocate_amount;
-                                    $sourceBudget->balance_amount = $sourceBudget->balance_amount - $budgetRequest->reallocate_amount;
+                                    // Update source (Taking From): add reallocate_amount (FIXED: was subtracting, now adding)
+                                    $sourceBudget->approved_amount = $sourceBudget->approved_amount + $budgetRequest->reallocate_amount;
+                                    $sourceBudget->balance_amount = $sourceBudget->balance_amount + $budgetRequest->reallocate_amount;
                                     $sourceBudget->save();
 
-                                    // Update destination (Moving To): add reallocate_amount
-                                    $destinationBudget->approved_amount = $destinationBudget->approved_amount + $budgetRequest->reallocate_amount;
-                                    $destinationBudget->balance_amount = $destinationBudget->balance_amount + $budgetRequest->reallocate_amount;
+                                    // Update destination (Moving To): subtract reallocate_amount (FIXED: was adding, now subtracting)
+                                    $destinationBudget->approved_amount = $destinationBudget->approved_amount - $budgetRequest->reallocate_amount;
+                                    $destinationBudget->balance_amount = $destinationBudget->balance_amount - $budgetRequest->reallocate_amount;
                                     $destinationBudget->save();
+                                    
+                                    Log::info('=== REALLOCATION BUDGET UPDATES (FIXED) ===', [
+                                        'source_budget_id' => $sourceBudget->id,
+                                        'source_sub_cost_center' => $sourceBudget->sub_cost_center,
+                                        'source_approved_before' => $sourceOldApproved,
+                                        'source_approved_after' => $sourceBudget->approved_amount,
+                                        'source_balance_before' => $sourceOldBalance,
+                                        'source_balance_after' => $sourceBudget->balance_amount,
+                                        'destination_budget_id' => $destinationBudget->id,
+                                        'destination_sub_cost_center' => $destinationBudget->sub_cost_center,
+                                        'destination_approved_before' => $destinationOldApproved,
+                                        'destination_approved_after' => $destinationBudget->approved_amount,
+                                        'destination_balance_before' => $destinationOldBalance,
+                                        'destination_balance_after' => $destinationBudget->balance_amount,
+                                        'reallocate_amount' => $budgetRequest->reallocate_amount,
+                                        'note' => 'FIXED: Source now adds, Destination now subtracts (operations swapped)'
+                                    ]);
 
                                     // Update history record
                                     $historyRecord = BudgetReallocationHistory::where('reallocation_request_id', $task->request_budgets_id)->first();
@@ -2436,6 +2453,61 @@ class TaskController extends Controller
                                         'alternative_request_budget_id' => $purchaseOrder->alternative_request_budget_id
                                     ]);
                                 }
+                            } else {
+                                // Handle reallocated budget PO approval
+                                // Use the request_budget_id from the purchase order directly
+                                if ($purchaseOrder->request_budget_id) {
+                                    $budget = DB::table('request_budgets')
+                                        ->where('id', $purchaseOrder->request_budget_id)
+                                        ->first();
+                                    
+                                    if ($budget) {
+                                        Log::info('=== REALLOCATED BUDGET PO APPROVAL - UPDATING RESERVE AND BALANCE ===', [
+                                            'purchase_order_id' => $task->purchase_order_id,
+                                            'request_budget_id' => $purchaseOrder->request_budget_id,
+                                            'budget_sub_cost_center' => $budget->sub_cost_center,
+                                            'po_amount' => $purchaseOrder->amount,
+                                            'po_vat_amount' => $purchaseOrder->vat_amount
+                                        ]);
+                                        
+                                        // Calculate PO total amount
+                                        $poTotalAmount = floatval($purchaseOrder->amount ?? 0) + floatval($purchaseOrder->vat_amount ?? 0);
+                                        
+                                        // Store old values for logging
+                                        $oldReservedAmount = floatval($budget->reserved_amount ?? 0);
+                                        $oldBalanceAmount = floatval($budget->balance_amount ?? 0);
+                                        
+                                        // Update reserve_amount and balance_amount
+                                        // reserve_amount = reserve_amount + PO total amount
+                                        // balance_amount = balance_amount - PO total amount
+                                        $newReservedAmount = $oldReservedAmount + $poTotalAmount;
+                                        $newBalanceAmount = $oldBalanceAmount - $poTotalAmount;
+                                        
+                                        DB::table('request_budgets')
+                                            ->where('id', $budget->id)
+                                            ->update([
+                                                'reserved_amount' => $newReservedAmount,
+                                                'balance_amount' => $newBalanceAmount,
+                                                'updated_at' => now()
+                                            ]);
+                                        
+                                        Log::info('=== BUDGET UPDATED ON PO APPROVAL (USING REQUEST_BUDGET_ID) ===', [
+                                            'budget_id' => $budget->id,
+                                            'budget_sub_cost_center' => $budget->sub_cost_center,
+                                            'reserved_amount_before' => $oldReservedAmount,
+                                            'reserved_amount_after' => $newReservedAmount,
+                                            'balance_amount_before' => $oldBalanceAmount,
+                                            'balance_amount_after' => $newBalanceAmount,
+                                            'po_total_amount' => $poTotalAmount,
+                                            'note' => 'reserve_amount increased, balance_amount decreased'
+                                        ]);
+                                    } else {
+                                        Log::warning('=== PO APPROVAL - BUDGET NOT FOUND ===', [
+                                            'purchase_order_id' => $task->purchase_order_id,
+                                            'request_budget_id' => $purchaseOrder->request_budget_id
+                                        ]);
+                                    }
+                                }
                             }
                         } else {
                             Log::info('=== INTERMEDIATE PURCHASE ORDER APPROVAL - UPDATING TO PENDING ===', [
@@ -2710,6 +2782,73 @@ class TaskController extends Controller
                                         Log::info('=== NORMAL BUDGET RELEASED FOR REJECTED PO ===', [
                                             'budget_id' => $normalBudget->id,
                                             'amount_released' => $totalAmount
+                                        ]);
+                                    }
+                                }
+                                
+                                // Handle reallocated budget PO rejection
+                                // Use the request_budget_id from the purchase order directly
+                                if ($purchaseOrder->request_budget_id) {
+                                    $budget = DB::table('request_budgets')
+                                        ->where('id', $purchaseOrder->request_budget_id)
+                                        ->first();
+                                    
+                                    if ($budget) {
+                                        Log::info('=== REALLOCATED BUDGET PO REJECTION - REVERTING RESERVE AND BALANCE ===', [
+                                            'purchase_order_id' => $task->purchase_order_id,
+                                            'request_budget_id' => $purchaseOrder->request_budget_id,
+                                            'budget_sub_cost_center' => $budget->sub_cost_center,
+                                            'po_total_amount' => $totalAmount
+                                        ]);
+                                        
+                                        // Store old values for logging
+                                        $oldReservedAmount = floatval($budget->reserved_amount ?? 0);
+                                        $oldBalanceAmount = floatval($budget->balance_amount ?? 0);
+                                        
+                                        // Revert reserve_amount and balance_amount
+                                        // reserve_amount = reserve_amount - PO total amount
+                                        // balance_amount = balance_amount + PO total amount
+                                        $newReservedAmount = $oldReservedAmount - $totalAmount;
+                                        $newBalanceAmount = $oldBalanceAmount + $totalAmount;
+                                        
+                                        DB::table('request_budgets')
+                                            ->where('id', $budget->id)
+                                            ->update([
+                                                'reserved_amount' => $newReservedAmount,
+                                                'balance_amount' => $newBalanceAmount,
+                                                'updated_at' => now()
+                                            ]);
+                                        
+                                        // Log audit
+                                        DB::table('budget_audit_logs')->insert([
+                                            'request_budget_id' => $budget->id,
+                                            'purchase_order_id' => $task->purchase_order_id,
+                                            'action' => 'release',
+                                            'amount' => $totalAmount,
+                                            'reserved_amount_before' => $oldReservedAmount,
+                                            'reserved_amount_after' => $newReservedAmount,
+                                            'balance_amount_before' => $oldBalanceAmount,
+                                            'balance_amount_after' => $newBalanceAmount,
+                                            'notes' => 'Reallocated budget PO rejected - reverting reserve and balance',
+                                            'created_by' => auth()->id(),
+                                            'created_at' => now(),
+                                            'updated_at' => now()
+                                        ]);
+                                        
+                                        Log::info('=== BUDGET REVERTED ON PO REJECTION (USING REQUEST_BUDGET_ID) ===', [
+                                            'budget_id' => $budget->id,
+                                            'budget_sub_cost_center' => $budget->sub_cost_center,
+                                            'reserved_amount_before' => $oldReservedAmount,
+                                            'reserved_amount_after' => $newReservedAmount,
+                                            'balance_amount_before' => $oldBalanceAmount,
+                                            'balance_amount_after' => $newBalanceAmount,
+                                            'po_total_amount' => $totalAmount,
+                                            'note' => 'reserve_amount decreased, balance_amount increased (reverted)'
+                                        ]);
+                                    } else {
+                                        Log::warning('=== PO REJECTION - BUDGET NOT FOUND ===', [
+                                            'purchase_order_id' => $task->purchase_order_id,
+                                            'request_budget_id' => $purchaseOrder->request_budget_id
                                         ]);
                                     }
                                 }

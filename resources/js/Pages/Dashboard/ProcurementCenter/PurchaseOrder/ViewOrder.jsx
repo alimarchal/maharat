@@ -199,6 +199,33 @@ export default function PurchaseOrdersTable() {
         });
     };
 
+    const getStatusBadge = (status) => {
+        if (!status) return null;
+        
+        const statusLower = status.toLowerCase();
+        let badgeClass = "px-3 py-1 rounded-full text-xs font-medium inline-block";
+        
+        if (statusLower === "draft") {
+            badgeClass += " bg-gray-200 text-gray-800";
+        } else if (statusLower === "pending") {
+            badgeClass += " bg-yellow-200 text-yellow-800";
+        } else if (statusLower === "approved") {
+            badgeClass += " bg-green-200 text-green-800";
+        } else if (statusLower === "rejected") {
+            badgeClass += " bg-red-200 text-red-800";
+        } else if (statusLower === "pending reallocation" || statusLower === "reallocate pending") {
+            badgeClass += " bg-purple-200 text-purple-800";
+        } else {
+            badgeClass += " bg-gray-200 text-gray-800";
+        }
+        
+        return (
+            <span className={badgeClass}>
+                {status}
+            </span>
+        );
+    };
+
     // Handle PDF generation
     const handleGeneratePDF = (orderId) => {
         const purchaseOrder = purchaseOrders.find(
@@ -350,6 +377,7 @@ export default function PurchaseOrdersTable() {
                                 <th className="py-3 px-4">Supplier</th>
                                 <th className="py-3 px-4">Issue Date</th>
                                 <th className="py-3 px-4">Amount</th>
+                                <th className="py-3 px-4">Status</th>
                                 {/* <th className="py-3 px-4 text-center">
                                     Attachment
                                 </th> */}
@@ -362,7 +390,7 @@ export default function PurchaseOrdersTable() {
                             {loading ? (
                                 <tr>
                                     <td
-                                        colSpan="7"
+                                        colSpan="8"
                                         className="text-center py-12"
                                     >
                                         <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
@@ -371,7 +399,7 @@ export default function PurchaseOrdersTable() {
                             ) : error ? (
                                 <tr>
                                     <td
-                                        colSpan="7"
+                                        colSpan="8"
                                         className="text-center text-red-500 font-medium py-4"
                                     >
                                         {error}
@@ -401,6 +429,9 @@ export default function PurchaseOrdersTable() {
                                                 const sum = amount + vat;
                                                 return sum.toLocaleString();
                                             })()}
+                                        </td>
+                                        <td className="px-3 py-4">
+                                            {getStatusBadge(order.status)}
                                         </td>
                                         {/* <td className="px-3 py-4 text-center">
                                             <div className="flex justify-center">
@@ -447,7 +478,7 @@ export default function PurchaseOrdersTable() {
                             ) : (
                                 <tr>
                                     <td
-                                        colSpan="7"
+                                        colSpan="8"
                                         className="text-center py-4"
                                     >
                                         No purchase orders available.
