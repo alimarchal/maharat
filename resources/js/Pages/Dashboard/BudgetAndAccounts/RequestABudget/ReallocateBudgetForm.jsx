@@ -273,21 +273,23 @@ const ReallocateBudgetForm = () => {
                     });
                     setReallocateSubCostCenters(uniqueReallocateSubCostCenters);
 
-                    // Use source_new_balance and destination_new_balance from history record
+                    // Use source_old_balance and destination_old_balance from history record
+                    // These represent the original available budgets BEFORE the reallocation
+                    // and should remain static in edit mode (not recalculated)
                     if (reallocationRequest.reallocation_history) {
                         const history = reallocationRequest.reallocation_history;
                         
-                        // Set source available budget from source_new_balance
-                        if (history.source_new_balance !== null && history.source_new_balance !== undefined) {
-                            setCurrentAvailableBudget(parseFloat(history.source_new_balance) || 0);
+                        // Set source available budget from source_old_balance (original balance before reallocation)
+                        if (history.source_old_balance !== null && history.source_old_balance !== undefined) {
+                            setCurrentAvailableBudget(parseFloat(history.source_old_balance) || 0);
                         } else {
                             setCurrentAvailableBudget(0);
                         }
                         
-                        // Set destination available budget from destination_new_balance
+                        // Set destination available budget from destination_old_balance (original balance before reallocation)
                         if (reallocateSubCostCenter) {
-                            if (history.destination_new_balance !== null && history.destination_new_balance !== undefined) {
-                                setDestinationAvailableBudget(parseFloat(history.destination_new_balance) || 0);
+                            if (history.destination_old_balance !== null && history.destination_old_balance !== undefined) {
+                                setDestinationAvailableBudget(parseFloat(history.destination_old_balance) || 0);
                             } else {
                                 setDestinationAvailableBudget(0);
                             }
@@ -646,18 +648,13 @@ const ReallocateBudgetForm = () => {
 
             if (isEditMode) {
                 // Update existing reallocation request
-                // Include all required fields from the original data
-                submitData.status = originalReallocationData?.status || "Draft";
-                submitData.previous_year_budget_amount = parseFloat(originalReallocationData?.previous_year_budget_amount) || 0;
-                submitData.requested_amount = parseFloat(originalReallocationData?.requested_amount) || 0;
-                submitData.revenue_planned = parseFloat(originalReallocationData?.revenue_planned) || 0;
-                submitData.urgency = originalReallocationData?.urgency || "Low";
-                submitData.previous_year_revenue = originalReallocationData?.previous_year_revenue ? parseFloat(originalReallocationData.previous_year_revenue) : null;
-                submitData.current_year_revenue = originalReallocationData?.current_year_revenue ? parseFloat(originalReallocationData.current_year_revenue) : null;
-                submitData.approved_amount = originalReallocationData?.approved_amount ? parseFloat(originalReallocationData.approved_amount) : null;
-                submitData.reserved_amount = originalReallocationData?.reserved_amount ? parseFloat(originalReallocationData.reserved_amount) : null;
-                submitData.consumed_amount = originalReallocationData?.consumed_amount ? parseFloat(originalReallocationData.consumed_amount) : null;
-                submitData.balance_amount = originalReallocationData?.balance_amount ? parseFloat(originalReallocationData.balance_amount) : null;
+                // ONLY send the fields that should be updated in edit mode
+                // Do NOT send other fields to prevent them from being changed
+                const updateData = {
+                    reallocate_amount: parseFloat(formData.reallocate_amount),
+                    reason_for_increase: formData.reason_for_increase,
+                    type: "reallocation",
+                };
                 
                 // Log what fields are being updated
                 console.log('=== BUDGET REALLOCATE UPDATE ===', {
@@ -665,31 +662,31 @@ const ReallocateBudgetForm = () => {
                     fields_updated: {
                         reallocate_amount: {
                             old: originalReallocateAmount,
-                            new: submitData.reallocate_amount,
-                            changed: originalReallocateAmount !== submitData.reallocate_amount
+                            new: updateData.reallocate_amount,
+                            changed: originalReallocateAmount !== updateData.reallocate_amount
                         },
                         reason_for_increase: {
                             old: originalReallocationData?.reason_for_increase || '',
-                            new: submitData.reason_for_increase,
-                            changed: (originalReallocationData?.reason_for_increase || '') !== submitData.reason_for_increase
+                            new: updateData.reason_for_increase,
+                            changed: (originalReallocationData?.reason_for_increase || '') !== updateData.reason_for_increase
                         }
                     },
-                    fields_not_updated: {
-                        fiscal_period_id: submitData.fiscal_period_id,
-                        department_id: submitData.department_id,
-                        cost_center_id: submitData.cost_center_id,
-                        sub_cost_center: submitData.sub_cost_center,
-                        reallocate_to_sub_cost_center: submitData.reallocate_to_sub_cost_center,
-                        previous_year_budget_amount: submitData.previous_year_budget_amount,
-                        requested_amount: submitData.requested_amount,
-                        revenue_planned: submitData.revenue_planned,
-                        urgency: submitData.urgency,
-                        status: submitData.status
+                    fields_preserved: {
+                        fiscal_period_id: formData.fiscal_period_id,
+                        department_id: formData.department_id,
+                        cost_center_id: formData.cost_center_id,
+                        sub_cost_center: formData.sub_cost_center,
+                        reallocate_to_sub_cost_center: formData.reallocate_sub_cost_center,
+                        previous_year_budget_amount: originalReallocationData?.previous_year_budget_amount,
+                        requested_amount: originalReallocationData?.requested_amount,
+                        revenue_planned: originalReallocationData?.revenue_planned,
+                        urgency: originalReallocationData?.urgency,
+                        status: originalReallocationData?.status
                     },
-                    full_payload: submitData
+                    update_payload: updateData
                 });
                 
-                const response = await axios.put(`/api/v1/request-budgets/${budgetRequestId}`, submitData);
+                const response = await axios.put(`/api/v1/request-budgets/${budgetRequestId}`, updateData);
                 reallocationId = response.data.data?.id || budgetRequestId;
 
                 if (!reallocationId) {
