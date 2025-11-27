@@ -374,14 +374,16 @@ class PurchaseOrderController extends Controller
                         ];
                     }
                     
-                    // Create reallocation request without destination (will be set during approval)
+                    // Create reallocation request without source (will be set during approval)
+                    // Note: Approver selects the FROM subcost center (where budget is taken from)
+                    //       PO's subcost center is the TO subcost center (where budget is moved to)
                     $reallocationRequest = RequestBudget::create([
                         'purchase_order_id' => $purchaseOrder->id,
                         'fiscal_period_id' => $fiscalPeriodId,
                         'department_id' => $rfq->department_id,
                         'cost_center_id' => $rfq->cost_center_id,
-                        'sub_cost_center' => $rfq->sub_cost_center_id,
-                        'reallocate_to_sub_cost_center' => null, // Will be set during approval
+                        'sub_cost_center' => null, // Will be set during approval (FROM - where budget is taken from)
+                        'reallocate_to_sub_cost_center' => $rfq->sub_cost_center_id, // TO - PO's subcost center (where budget is moved to)
                         'reallocate_amount' => $shortfallAmount,
                         'original_destination_sub_cost_center' => null, // Will be set when first approver selects
                         'type' => 'reallocation',
@@ -391,29 +393,8 @@ class PurchaseOrderController extends Controller
                         'available_alternatives_json' => json_encode($alternativesData),
                     ]);
                     
-                    // Create history record with source info (destination will be updated when approver selects it)
-                    if ($originalBudget) {
-                        \App\Models\BudgetReallocationHistory::create([
-                            'reallocation_request_id' => $reallocationRequest->id,
-                            'source_budget_request_id' => $originalBudget->id,
-                            'destination_budget_request_id' => null, // Will be set when destination is selected
-                            'reallocate_amount' => $shortfallAmount,
-                            'source_old_balance' => $originalBudget->balance_amount,
-                            'source_new_balance' => $originalBudget->balance_amount, // Will be updated when approved
-                            'destination_old_balance' => null, // Will be set when destination is selected
-                            'destination_new_balance' => null, // Will be updated when approved
-                            'source_old_approved_amount' => $originalBudget->approved_amount,
-                            'source_new_approved_amount' => null, // Will be updated when approved
-                            'destination_old_approved_amount' => null, // Will be set when destination is selected
-                            'source_old_requested_amount' => $originalBudget->requested_amount,
-                            'destination_old_requested_amount' => null, // Will be set when destination is selected
-                            'source_type' => 'purchase_order',
-                            'purchase_order_id' => $purchaseOrder->id,
-                            'status' => 'Draft',
-                            'notes' => 'Budget reallocation required for Purchase Order: ' . $purchaseOrder->purchase_order_no,
-                            'created_by' => auth()->id(),
-                        ]);
-                    }
+                    // Note: History record will be created when approver selects the source (FROM) subcost center
+                    // in the updateDestination method of RequestBudgetController
                     
                     \Log::info('PurchaseOrder Store - Reallocation request created', [
                         'reallocation_request_id' => $reallocationRequest->id,
