@@ -1279,55 +1279,6 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 <span className="text-gray-600">Cost Center:</span>
                                                 <span className="font-medium ml-2">{currentTask.request_budget.cost_center?.name || "N/A"}</span>
                                             </div>
-                                            <div>
-                                                <span className="text-gray-600">Moving To Sub Cost Center:</span>
-                                                <span className="font-medium ml-2">{currentTask.request_budget.updated_destination_sub_cost_center_details?.name || currentTask.request_budget.reallocate_to_sub_cost_center_details?.name || "N/A"}</span>
-                                            </div>
-                                            {currentTask.request_budget.purchase_order && (
-                                                <div>
-                                                    <span className="text-gray-600">Related Purchase Order:</span>
-                                                    <span className="font-medium ml-2">{currentTask.request_budget.purchase_order.purchase_order_no || "N/A"}</span>
-                                                </div>
-                                            )}
-                                            {currentTask.request_budget.purchase_order && (
-                                                <div>
-                                                    <span className="text-gray-600">Purchase Order Total:</span>
-                                                    <span className="font-medium ml-2">
-                                                        {(() => {
-                                                            const amount = parseFloat(currentTask.request_budget.purchase_order.amount || 0);
-                                                            const vat = parseFloat(currentTask.request_budget.purchase_order.vat_amount || 0);
-                                                            const total = amount + vat;
-                                                            return total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                                                        })()}
-                                                    </span>
-                                                </div>
-                                            )}
-                                            <div>
-                                                <span className="text-gray-600">Current Budget Amount:</span>
-                                                <span className="font-medium ml-2">
-                                                    {(() => {
-                                                        // First priority: Use destination_new_balance from reallocation_history (same as form uses)
-                                                        if (currentTask.request_budget?.reallocation_history?.destination_new_balance !== null && 
-                                                            currentTask.request_budget?.reallocation_history?.destination_new_balance !== undefined) {
-                                                            return parseFloat(currentTask.request_budget.reallocation_history.destination_new_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                                                        }
-                                                        
-                                                        // Second priority: Use the fetched destination budget balance (Moving To sub cost center)
-                                                        if (movingToBudgetBalance !== null && movingToBudgetBalance !== undefined) {
-                                                            return parseFloat(movingToBudgetBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                                                        }
-                                                        
-                                                        // Fallback: try to get from updated_destination_sub_cost_center_details first, then reallocate_to_sub_cost_center_details
-                                                        const destinationBudget = currentTask.request_budget.updated_destination_sub_cost_center_details 
-                                                            || currentTask.request_budget.reallocate_to_sub_cost_center_details;
-                                                        if (destinationBudget && destinationBudget.total_balance) {
-                                                            return parseFloat(destinationBudget.total_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                                                        }
-                                                        
-                                                        return "N/A";
-                                                    })()}
-                                                </span>
-                                            </div>
                                             {(() => {
                                                 // Calculate the value first to check if it's N/A
                                                 // "Moved From" should show the SOURCE sub cost center (sub_cost_center), not the destination
@@ -1379,7 +1330,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 return (
                                                     <>
                                                         <div>
-                                                            <span className="text-gray-600">Moved From Sub Cost Center:</span>
+                                                            <span className="text-gray-600">Move From Sub Cost Center:</span>
                                                             <span className="font-medium ml-2">
                                                                 {takingFromValue}
                                                             </span>
@@ -1392,28 +1343,86 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                                     : "N/A"}
                                                             </span>
                                                         </div>
-                                                        <div className="col-span-2">
-                                                            <span className="text-gray-600">Reallocation Amount:</span>
-                                                            <span className="font-medium ml-2 text-red-600">
-                                                                {(() => {
-                                                                    const amount = currentTask.request_budget.reallocate_amount;
-                                                                    if (amount !== null && amount !== undefined && parseFloat(amount) > 0) {
-                                                                        return parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                                                                    }
-                                                                    return "N/A";
-                                                                })()}
-                                                            </span>
-                                                        </div>
-                                                        {currentTask.request_budget.sub_cost_center_updated && currentTask.request_budget.updated_by_user ? (
-                                                            <div className="col-span-2 mt-2 text-sm">
-                                                                <span className="text-red-600">
-                                                                    Moved From {currentTask.request_budget.sub_cost_center_details?.name || "N/A"} by <span className="font-bold text-red-900">{currentTask.request_budget.updated_by_user?.name || "Previous Approver"}</span>
-                                                                </span>
-                                                            </div>
-                                                        ) : null}
                                                     </>
                                                 );
                                             })()}
+                                            <div>
+                                                <span className="text-gray-600">Move To Sub Cost Center:</span>
+                                                <span className="font-medium ml-2">{currentTask.request_budget.updated_destination_sub_cost_center_details?.name || currentTask.request_budget.reallocate_to_sub_cost_center_details?.name || "N/A"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600">Current Budget Amount:</span>
+                                                <span className="font-medium ml-2">
+                                                    {(() => {
+                                                        // First priority: Use destination_new_balance from reallocation_history (same as form uses)
+                                                        if (currentTask.request_budget?.reallocation_history?.destination_new_balance !== null && 
+                                                            currentTask.request_budget?.reallocation_history?.destination_new_balance !== undefined) {
+                                                            return parseFloat(currentTask.request_budget.reallocation_history.destination_new_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                        }
+                                                        
+                                                        // Second priority: Use the fetched destination budget balance (Moving To sub cost center)
+                                                        if (movingToBudgetBalance !== null && movingToBudgetBalance !== undefined) {
+                                                            return parseFloat(movingToBudgetBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                        }
+                                                        
+                                                        // Fallback: try to get from updated_destination_sub_cost_center_details first, then reallocate_to_sub_cost_center_details
+                                                        const destinationBudget = currentTask.request_budget.updated_destination_sub_cost_center_details 
+                                                            || currentTask.request_budget.reallocate_to_sub_cost_center_details;
+                                                        if (destinationBudget && destinationBudget.total_balance) {
+                                                            return parseFloat(destinationBudget.total_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                        }
+                                                        
+                                                        return "N/A";
+                                                    })()}
+                                                </span>
+                                            </div>
+                                            {currentTask.request_budget.purchase_order && (
+                                                <div>
+                                                    <span className="text-gray-600">Related Purchase Order:</span>
+                                                    <span className="font-medium ml-2">{currentTask.request_budget.purchase_order.purchase_order_no || "N/A"}</span>
+                                                </div>
+                                            )}
+                                            {currentTask.request_budget.purchase_order && (
+                                                <div>
+                                                    <span className="text-gray-600">Purchase Order Total:</span>
+                                                    <span className="font-medium ml-2">
+                                                        {(() => {
+                                                            const amount = parseFloat(currentTask.request_budget.purchase_order.amount || 0);
+                                                            const vat = parseFloat(currentTask.request_budget.purchase_order.vat_amount || 0);
+                                                            const total = amount + vat;
+                                                            return total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                        })()}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="col-span-2">
+                                                <span className="text-gray-600">
+                                                    {currentTask.status?.toLowerCase() === 'approved' ? 'Reallocated Amount:' : 'Reallocation Amount:'}
+                                                </span>
+                                                <span className="font-medium ml-2 text-red-600">
+                                                    {(() => {
+                                                        // If approved, get amount from reallocation_history
+                                                        if (currentTask.status?.toLowerCase() === 'approved' && currentTask.request_budget?.reallocation_history?.reallocate_amount !== null && 
+                                                            currentTask.request_budget?.reallocation_history?.reallocate_amount !== undefined) {
+                                                            return parseFloat(currentTask.request_budget.reallocation_history.reallocate_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                        }
+                                                        
+                                                        // Otherwise, use the current reallocate_amount
+                                                        const amount = currentTask.request_budget.reallocate_amount;
+                                                        if (amount !== null && amount !== undefined && parseFloat(amount) > 0) {
+                                                            return parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                        }
+                                                        return "N/A";
+                                                    })()}
+                                                </span>
+                                            </div>
+                                            {currentTask.request_budget.sub_cost_center_updated && currentTask.request_budget.updated_by_user ? (
+                                                <div className="col-span-2 mt-2 text-sm">
+                                                    <span className="text-red-600">
+                                                        Move From {currentTask.request_budget.sub_cost_center_details?.name || "N/A"} by <span className="font-bold text-red-900">{currentTask.request_budget.updated_by_user?.name || "Previous Approver"}</span>
+                                                    </span>
+                                                </div>
+                                            ) : null}
                                         </div>
                                     </div>
                                 )}
