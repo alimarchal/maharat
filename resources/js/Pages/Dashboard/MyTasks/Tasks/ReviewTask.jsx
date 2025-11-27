@@ -97,7 +97,7 @@ const ReviewTask = () => {
         if (!formData.action) newErrors.action = "Action is required";
         if (formData.action === "Refer" && !formData.user_id)
             newErrors.user_id = "User is required";
-        if (formData.action === "Update Sub Cost Center" && !formData.new_destination_sub_cost_center_id)
+        if (formData.action === "Reallocate Sub Cost Center" && !formData.new_destination_sub_cost_center_id)
             newErrors.new_destination_sub_cost_center_id = "New destination sub cost center is required";
 
         setErrors(newErrors);
@@ -113,9 +113,9 @@ const ReviewTask = () => {
                 continueApprovalFlow: taskData.continue_approval_flow
             });
 
-            // Handle "Update Sub Cost Center" action separately
+            // Handle "Reallocate Sub Cost Center" action separately
             // This action updates the destination AND approves the current task
-            if (formData.action === "Update Sub Cost Center") {
+            if (formData.action === "Reallocate Sub Cost Center") {
                 if (!taskData.request_budget?.id) {
                     toast.error("Request budget not found");
                     setIsSubmitting(false);
@@ -849,7 +849,7 @@ const ReviewTask = () => {
                                                 return availableAmount >= reallocateAmount;
                                             });
                                             
-                                            // Show "Update Sub Cost Center" only if not updated yet and alternatives with sufficient budget exist
+                                            // Show "Reallocate Sub Cost Center" only if not updated yet and alternatives with sufficient budget exist
                                             const canUpdateSubCostCenter = !subCostCenterUpdated && 
                                                                           hasSufficientAlternatives;
                                             
@@ -867,9 +867,9 @@ const ReviewTask = () => {
                                                 baseOptions.push({ id: "Reject", label: "Reject" });
                                                 // Do NOT add "Refer" option when no alternatives exist
                                             } else {
-                                                // Normal flow: Add "Update Sub Cost Center" if available (replaces Approve when not updated)
+                                                // Normal flow: Add "Reallocate Sub Cost Center" if available (replaces Approve when not updated)
                                                 if (canUpdateSubCostCenter) {
-                                                    baseOptions.push({ id: "Update Sub Cost Center", label: "Update Sub Cost Center" });
+                                                    baseOptions.push({ id: "Reallocate Sub Cost Center", label: "Reallocate Sub Cost Center" });
                                                 } else {
                                                     // Add "Approve" only if sub cost center has been updated
                                                     baseOptions.push({ id: "Approve", label: "Approve" });
@@ -930,10 +930,10 @@ const ReviewTask = () => {
                                 )}
                             </div>
                         )}
-                        {formData.action === "Update Sub Cost Center" && (
+                        {formData.action === "Reallocate Sub Cost Center" && (
                             <div className="w-full">
                                 <SelectFloating
-                                    label="Take From Sub Cost Center"
+                                    label="Move From Sub Cost Center"
                                     name="new_destination_sub_cost_center_id"
                                     value={formData.new_destination_sub_cost_center_id}
                                     onChange={handleChange}
