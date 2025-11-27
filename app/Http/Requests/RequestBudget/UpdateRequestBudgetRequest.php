@@ -20,6 +20,10 @@ class UpdateRequestBudgetRequest extends FormRequest
      */
     public function rules(): array
     {
+        // For reallocation updates, only require reallocate_amount and reason_for_increase
+        // All other fields should be optional to allow partial updates
+        $isReallocation = $this->input('type') === 'reallocation';
+        
         return [
             'fiscal_period_id' => 'sometimes|exists:fiscal_periods,id',
             'department_id' => 'sometimes|exists:departments,id',
@@ -27,20 +31,20 @@ class UpdateRequestBudgetRequest extends FormRequest
             'sub_cost_center' => 'sometimes|exists:cost_centers,id',
             'previous_year_revenue' => 'nullable|numeric|min:0',
             'current_year_revenue' => 'nullable|numeric|min:0',
-            'previous_year_budget_amount' => 'required|numeric|min:0',
-            'requested_amount' => 'required|numeric|min:0',
-            'revenue_planned' => 'required|numeric|min:0',
+            'previous_year_budget_amount' => $isReallocation ? 'nullable|numeric|min:0' : 'sometimes|numeric|min:0',
+            'requested_amount' => $isReallocation ? 'nullable|numeric|min:0' : 'sometimes|numeric|min:0',
+            'revenue_planned' => $isReallocation ? 'nullable|numeric|min:0' : 'sometimes|numeric|min:0',
             'approved_amount' => 'nullable|numeric|min:0',
             'reserved_amount' => 'nullable|numeric|min:0',
             'consumed_amount' => 'nullable|numeric|min:0',
             'balance_amount' => 'nullable|numeric|min:0',
-            'urgency' => 'required|in:Low,Medium,High',
+            'urgency' => $isReallocation ? 'nullable|in:Low,Medium,High' : 'sometimes|in:Low,Medium,High',
             'attachment_path' => 'nullable|string',
             'original_name' => 'nullable|string',
             'reason_for_increase' => 'nullable|string|max:1000',
-            'status' => 'required|in:Draft,Pending,Approved,Rejected',
+            'status' => $isReallocation ? 'nullable|in:Draft,Pending,Approved,Rejected' : 'sometimes|in:Draft,Pending,Approved,Rejected',
             'type' => 'sometimes|in:budget_request,reallocation',
-            'reallocate_amount' => 'nullable|numeric|min:0',
+            'reallocate_amount' => $isReallocation ? 'sometimes|numeric|min:0' : 'nullable|numeric|min:0',
             'reallocate_to_sub_cost_center' => 'nullable|exists:cost_centers,id',
         ];
     }

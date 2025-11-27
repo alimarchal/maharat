@@ -1306,11 +1306,12 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 }
                                                 
                                                 // Get source budget amount (for "Moved From" sub cost center)
+                                                // Use source_old_balance (original balance BEFORE reallocation) to match edit form
                                                 const movedFromBudgetAmount = (() => {
-                                                    // First priority: Use source_new_balance from reallocation_history (same as form uses)
-                                                    if (currentTask.request_budget?.reallocation_history?.source_new_balance !== null && 
-                                                        currentTask.request_budget?.reallocation_history?.source_new_balance !== undefined) {
-                                                        return parseFloat(currentTask.request_budget.reallocation_history.source_new_balance);
+                                                    // First priority: Use source_old_balance from reallocation_history (matches edit form)
+                                                    if (currentTask.request_budget?.reallocation_history?.source_old_balance !== null && 
+                                                        currentTask.request_budget?.reallocation_history?.source_old_balance !== undefined) {
+                                                        return parseFloat(currentTask.request_budget.reallocation_history.source_old_balance);
                                                     }
                                                     
                                                     // Second priority: Use the fetched moved from budget balance (most accurate)
@@ -1350,10 +1351,10 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                 const moveToSubCostCenter = currentTask.request_budget.updated_destination_sub_cost_center_details?.name || currentTask.request_budget.reallocate_to_sub_cost_center_details?.name;
                                                 
                                                 const currentBudgetAmount = (() => {
-                                                    // First priority: Use destination_new_balance from reallocation_history (same as form uses)
-                                                    if (currentTask.request_budget?.reallocation_history?.destination_new_balance !== null && 
-                                                        currentTask.request_budget?.reallocation_history?.destination_new_balance !== undefined) {
-                                                        return parseFloat(currentTask.request_budget.reallocation_history.destination_new_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                    // First priority: Use destination_old_balance from reallocation_history (matches edit form)
+                                                    if (currentTask.request_budget?.reallocation_history?.destination_old_balance !== null && 
+                                                        currentTask.request_budget?.reallocation_history?.destination_old_balance !== undefined) {
+                                                        return parseFloat(currentTask.request_budget.reallocation_history.destination_old_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                                     }
                                                     
                                                     // Second priority: Use the fetched destination budget balance (Moving To sub cost center)
