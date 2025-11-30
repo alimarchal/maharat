@@ -97,12 +97,23 @@ const BudgetReallocationStatusFlow = () => {
         }
 
         // Then show all assigned users from all records
+        // Get the request_budget status to determine if it's truly approved
+        const requestBudgetStatus = cardData[0]?.request_budget?.status;
+        
         cardData.forEach((card, index) => {
+            // Determine the correct status to display
+            // If request_budget status is still "Pending", show "Pending" even if transaction is "Approve"
+            // Only show "Approve" if the request_budget status is "Approved" (final approval)
+            let displayStatus = card.status;
+            if (card.status === "Approve" && requestBudgetStatus === "Pending") {
+                displayStatus = "Pending";
+            }
+            
             cards.push({
                 id: `assigned-${card.id}`,
                 type: "assigned",
                 user: card.assigned_user,
-                status: card.status,
+                status: displayStatus,
                 created_at: card.created_at,
                 cardData: card,
                 referredUser: card.referred_user ? {
