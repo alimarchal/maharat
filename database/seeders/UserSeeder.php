@@ -51,7 +51,7 @@ class UserSeeder extends Seeder
         $generateMobile = fn() => '05' . mt_rand(10000000, 99999999);
         $generateUsername = fn($name) => strtolower(str_replace(' ', '_', $name));
 
-        // Create Admin
+        // Create or update Admin
         $admin = User::firstOrCreate(
             ['email' => 'admin@example.com'],
             [
@@ -69,11 +69,11 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
             ]
         );
-        $admin->assignRole('Admin');
+        $admin->syncRoles(['Admin']); // Use syncRoles to update existing users
         $this->notificationSettingsService->setupDefaultSettingsForUser($admin);
 
 
-        // Create Director
+        // Create or update Director - Assign Admin role to grant all permissions
         $director = User::firstOrCreate(
             ['email' => 'director@example.com'],
             [
@@ -87,11 +87,11 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
             ]
         );
-        $director->assignRole('Managing Director');
+        $director->syncRoles(['Admin']); // Use syncRoles to update existing users - grants all permissions
         $this->notificationSettingsService->setupDefaultSettingsForUser($director);
 
 
-        // Create Manager
+        // Create or update Manager - Assign Admin role to grant all permissions
         $manager = User::firstOrCreate(
             ['email' => 'manager@example.com'],
             [
@@ -105,11 +105,11 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
             ]
         );
-        $manager->assignRole('Department Director');
+        $manager->syncRoles(['Admin']); // Use syncRoles to update existing users - grants all permissions
         $this->notificationSettingsService->setupDefaultSettingsForUser($manager);
 
 
-        // Create Supervisor
+        // Create or update Supervisor - Assign Admin role to grant all permissions
         $supervisor = User::firstOrCreate(
             ['email' => 'supervisor@example.com'],
             [
@@ -123,7 +123,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
             ]
         );
-        $supervisor->assignRole('Admin & Support Supervisor');
+        $supervisor->syncRoles(['Admin']); // Use syncRoles to update existing users - grants all permissions
         $this->notificationSettingsService->setupDefaultSettingsForUser($supervisor);
 
 
