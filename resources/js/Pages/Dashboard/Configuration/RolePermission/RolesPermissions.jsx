@@ -907,7 +907,17 @@ const RolesPermissions = () => {
                                     className: "border-t border-gray-300 my-1 py-1 text-center text-gray-500 text-sm font-medium",
                                 }] : []),
                                 ...users
-                                    .filter((user) => ![2, 3, 4].includes(user.id))
+                                    .filter((user) => {
+                                        // Only director@example.com can see users 2, 3, 4
+                                        const isDirector = auth?.user?.email === 'director@example.com';
+                                        if (isDirector) {
+                                            // Director can see all users including 2, 3, 4
+                                            return true;
+                                        } else {
+                                            // Other users cannot see users 2, 3, 4
+                                            return ![2, 3, 4].includes(user.id);
+                                        }
+                                    })
                                     .sort((a, b) => a.name.localeCompare(b.name))
                                     .map((user) => ({
                                         id: `user-${user.id}`,
