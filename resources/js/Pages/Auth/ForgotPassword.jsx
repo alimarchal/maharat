@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, router, useForm } from "@inertiajs/react";
+import axios from "axios";
 
 const ForgotPasswordPage = () => {
   const [activeBoxes, setActiveBoxes] = useState([0, 1, 2, 3, 4, 5]);
@@ -140,47 +141,12 @@ const ForgotPasswordPage = () => {
 
   const checkEmailExists = async (email) => {
     try {
-      // Get CSRF token from meta tag
-      const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-      
-      if (!token) {
-        console.error("CSRF token not found");
-        setError("Security token not found. Please refresh the page.");
-        return false;
-      }
+      // Use axios so Laravel's default CSRF handling (XSRF-TOKEN cookie) is applied
+      const response = await axios.post(route("check.email"), { email });
 
-      console.log("CSRF Token:", token); // Debug: Log the token
+      console.log("API Response:", response.data);
 
-      // Use URLSearchParams for form data
-      const formData = new URLSearchParams();
-      formData.append('email', email);
-      formData.append('_token', token);
-
-      const response = await fetch("/check-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "X-CSRF-TOKEN": token,
-          "Accept": "application/json",
-          "X-Requested-With": "XMLHttpRequest",
-        },
-        credentials: "same-origin",
-        body: formData.toString(),
-      });
-
-      if (!response.ok) {
-        console.error("HTTP Error:", response.status, response.statusText);
-        if (response.status === 419) {
-          setError("Session expired. Please refresh the page and try again.");
-          return false;
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("API Response:", data); // Log API response
-
-      if (data.exists && data.verified) {
+      if (response.data?.exists && response.data?.verified) {
         return true;
       } else {
         setError("Email does not exist or is not verified.");
@@ -188,7 +154,14 @@ const ForgotPasswordPage = () => {
       }
     } catch (error) {
       console.error("Error checking email:", error);
-      setError("Email does not exist in the database. Please contact the Admin!");
+
+      if (error.response?.status === 419) {
+        setError("Session expired. Please refresh the page and try again.");
+      } else {
+        setError(
+          "Email does not exist in the database. Please contact the Admin!"
+        );
+      }
       return false;
     }
   };
