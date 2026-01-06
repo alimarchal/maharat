@@ -4,8 +4,7 @@ import { faEdit, faTrash, faPlus, faChevronRight } from "@fortawesome/free-solid
 import axios from "axios";
 import AccountsModal from "./AccountsModal";
 import SuccessModal from "../../../../Components/SuccessModal";
-import { Link } from "@inertiajs/react";
-import { usePermissions } from "@/hooks/usePermissions";
+import { Link, usePage } from "@inertiajs/react";
 
 const SPECIAL_ACCOUNT_IDS = [1, 3, 6, 7, 10];
 const isSpecialAccountId = (id) => SPECIAL_ACCOUNT_IDS.includes(Number(id));
@@ -22,19 +21,13 @@ const AccountsTable = () => {
         message: "",
         title: "Success!"
     });
-    const { hasPermission } = usePermissions();
-    
-    // Check permissions for buttons
-    const canCreateNewAccount = hasPermission("create_new_account");
-
-    const [selectedFilter, setSelectedFilter] = useState("All");
-    const filters = ["All", "Approved", "Pending"];
+    const { props } = usePage();
+    const currentUserId = props?.auth?.user?.id;
+    const canCreateNewAccount = [2, 3, 4].includes(Number(currentUserId));
 
     const [accounts, setAccounts] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
-    const [costCenters, setCostCenters] = useState([]);
-    const [accountTypes, setAccountTypes] = useState([]);
 
     const fetchAccounts = async () => {
         setLoading(true);
@@ -44,15 +37,7 @@ const AccountsTable = () => {
                 `/api/v1/accounts?include=costCenter,accountCode&page=${currentPage}`
             );
             if (response.data && response.data.data) {
-                let filteredAccounts = response.data.data;
-                if (selectedFilter !== "All") {
-                    filteredAccounts = response.data.data.filter(
-                        (account) =>
-                            account.status.toLowerCase() ===
-                            selectedFilter.toLowerCase()
-                    );
-                }
-                setAccounts(filteredAccounts);
+                setAccounts(response.data.data);
                 setLastPage(response.data.meta?.last_page || 1);
                 setError("");
             }
@@ -63,28 +48,9 @@ const AccountsTable = () => {
         }
     };
 
-    const fetchFormData = async () => {
-        try {
-            const [costCentersResponse, accountCodesResponse] = await Promise.all([
-                axios.get("/api/v1/cost-centers"),
-                axios.get("/api/v1/account-codes"),
-            ]);
-
-            setCostCenters(costCentersResponse.data.data || []);
-            setAccountTypes(accountCodesResponse.data.data || []);
-        } catch (error) {
-            console.error("Error fetching form data:", error);
-        }
-    };
-
     useEffect(() => {
         fetchAccounts();
-        fetchFormData();
-    }, [selectedFilter, currentPage]);
-
-    const handleFilterChange = (filter) => {
-        setSelectedFilter(filter);
-    };
+    }, [currentPage]);
 
     const handleSave = async (formData) => {
         setLoading(true);
@@ -212,40 +178,14 @@ const AccountsTable = () => {
         }
     };
 
-    const getStatusClass = (status) => {
-        switch (status?.toLowerCase()) {
-            case "approved":
-                return "bg-green-100 text-green-800";
-            case "pending":
-                return "bg-yellow-100 text-yellow-800";
-            default:
-                return "bg-gray-100 text-gray-800";
-        }
-    };
-
     return (
         <div className="w-full">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-bold text-[#2C323C] mb-4">
                     Accounts
                 </h2>
-                <div className="flex justify-between items-center gap-4">
-                    <div className="p-1 space-x-2 border border-[#B9BBBD] bg-white rounded-full">
-                        {filters.map((filter) => (
-                            <button
-                                key={filter}
-                                className={`px-6 py-2 rounded-full text-xl transition ${
-                                    selectedFilter === filter
-                                        ? "bg-[#009FDC] text-white"
-                                        : "text-[#9B9DA2]"
-                                }`}
-                                onClick={() => handleFilterChange(filter)}
-                            >
-                                {filter}
-                            </button>
-                        ))}
-                    </div>
-                    {canCreateNewAccount && (
+                {canCreateNewAccount && (
+                    <div className="flex justify-end items-center">
                         <button
                             type="button"
                             className="bg-[#009FDC] text-white px-4 py-2 rounded-full text-xl font-medium"
@@ -253,8 +193,8 @@ const AccountsTable = () => {
                         >
                             Create a new Account
                         </button>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
             <table className="w-full table-fixed">
@@ -267,10 +207,8 @@ const AccountsTable = () => {
                         <th className="py-3 px-4">Account Code</th>
                         <th className="py-3 px-4 w-[15%]">Description</th>
                         <th className="py-3 px-4">Type</th>
-                        <th className="py-3 px-4">Cost Center</th>
                         <th className="py-3 px-4">Total Credit Amount</th>
                         <th className="py-3 px-4">Total Debit Amount</th>
-                        <th className="py-3 px-4 w-[7%]">Status</th>
                         <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl text-center w-[10%]">
                             Actions
                         </th>
@@ -279,14 +217,14 @@ const AccountsTable = () => {
                 <tbody className="text-[#2C323C] text-base font-medium divide-y divide-[#D7D8D9]">
                     {loading ? (
                         <tr>
-                            <td colSpan="10" className="text-center py-12">
+                            <td colSpan="8" className="text-center py-12">
                                 <div className="w-12 h-12 border-4 border-[#009FDC] border-t-transparent rounded-full animate-spin"></div>
                             </td>
                         </tr>
                     ) : error ? (
                         <tr>
                             <td
-                                colSpan="10"
+                                colSpan="8"
                                 className="text-center text-red-500 font-medium py-4"
                             >
                                 {error}
@@ -306,25 +244,11 @@ const AccountsTable = () => {
                                 <td className="py-3 px-4 truncate">
                                     {account.account_code?.account_type || "N/A"}
                                 </td>
-                                <td className="py-3 px-4">
-                                    {account.cost_center
-                                        ? account.cost_center.name
-                                        : "N/A"}
-                                </td>
                                 <td className="py-3 px-4 truncate">
                                     {account.credit_amount && parseFloat(account.credit_amount) > 0 ? account.credit_amount : ''}
                                 </td>
                                 <td className="py-3 px-4 truncate">
                                     {account.debit_amount && parseFloat(account.debit_amount) > 0 ? account.debit_amount : ''}
-                                </td>
-                                <td className="py-3 px-4">
-                                    <span
-                                        className={`px-3 py-1 inline-flex text-sm leading-6 font-semibold rounded-full ${getStatusClass(
-                                            account.status
-                                        )}`}
-                                    >
-                                        {account.status}
-                                    </span>
                                 </td>
                                 <td className="py-3 px-4">
                                     {(() => {
@@ -390,7 +314,7 @@ const AccountsTable = () => {
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="10" className="text-center py-4">
+                            <td colSpan="8" className="text-center py-4">
                                 No accounts found.
                             </td>
                         </tr>

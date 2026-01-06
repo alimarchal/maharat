@@ -276,6 +276,16 @@ class GrnController extends Controller
                     'delivery_status' => $validated['delivery_status'] ?? 'NOT_SET',
                     'reason' => 'delivery_status does not require approval process'
                 ]);
+                
+                // Update material request status if GRN is fully delivered (no approval needed)
+                if ($grn->purchase_order_id && in_array($grn->status, ['Fully Delivered', 'Adjusted Delivery'])) {
+                    \Log::info('=== TRIGGERING MATERIAL REQUEST STATUS UPDATE FOR FULLY DELIVERED/ADJUSTED GRN ===', [
+                        'grn_id' => $grn->id,
+                        'grn_status' => $grn->status,
+                        'purchase_order_id' => $grn->purchase_order_id
+                    ]);
+                    $this->updateMaterialRequestStatusFromGRN($grn);
+                }
             }
 
             // Note: Material request status update will be triggered after inventory update
