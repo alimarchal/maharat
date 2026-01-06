@@ -104,12 +104,41 @@ class AccountController extends Controller
      */
     public function update(UpdateAccountRequest $request, Account $account): JsonResponse
     {
+        // Store original values for comparison
+        $originalCreditAmount = floatval($account->credit_amount ?? 0);
+        $originalDebitAmount = floatval($account->debit_amount ?? 0);
+
+        // Get validated data early to check for Account 8
+        $data = $request->validated();
+
+        // Check if this is Account 8 (VAT Paid) BEFORE starting transaction
+        // Account 8 has its own transaction handling
+        if ($account->id == 8 && $account->name === 'VAT Paid (on purchases)') {
+            \Log::info('=== ACCOUNT 8 DETECTED IN NON-API CONTROLLER (EARLY CHECK) ===', [
+                'account_id' => $account->id,
+                'account_name' => $account->name,
+                'has_credit_amount' => $request->has('credit_amount'),
+                'credit_amount' => $request->input('credit_amount'),
+                'has_invoice_number' => $request->has('invoice_number'),
+                'invoice_number' => $request->input('invoice_number'),
+                'validated_data' => $data
+            ]);
+            
+            if (isset($data['credit_amount']) && floatval($data['credit_amount']) > 0 &&
+                isset($data['invoice_number']) && !empty(trim($data['invoice_number']))) {
+                
+                \Log::info('=== ACCOUNT 8 CONDITION MET - CALLING handleVatPaidAccountUpdate (NO PARENT TRANSACTION) ===');
+                return $this->handleVatPaidAccountUpdate($request, $account, $originalCreditAmount);
+            } else {
+                \Log::warning('=== ACCOUNT 8 DETECTED BUT CONDITIONS NOT MET ===', [
+                    'credit_amount' => $data['credit_amount'] ?? 'NOT SET',
+                    'invoice_number' => $data['invoice_number'] ?? 'NOT SET'
+                ]);
+            }
+        }
+
         try {
             DB::beginTransaction();
-
-            // Store original values for comparison
-            $originalCreditAmount = $account->credit_amount;
-            $originalDebitAmount = $account->debit_amount;
 
             // Special handling for Account ID 2 (Liabilities) - validate BEFORE updating
             if ($account->id == 2 && $account->name === 'Accounts Payable' && 
@@ -117,9 +146,6 @@ class AccountController extends Controller
                 $request->debit_amount > 0) {
                 $this->validateLiabilitiesAccountUpdate($request);
             }
-
-            // Update the account (but handle special cases)
-            $data = $request->validated();
             
             // For Liabilities account (ID 2), don't update credit_amount
             if ($account->id == 2 && $account->name === 'Accounts Payable') {
@@ -351,11 +377,32 @@ class AccountController extends Controller
             $data['original_name'] ?? null
         );
 
-        // Record transaction flow for VAT Paid (id 8)
+        // Credit Cost of Purchases (Account 5) with base amount - reduces expense when payment is made
+        if ($basePaid > 0) {
+            DB::table('accounts')
+                ->where('id', 5)
+                ->increment('credit_amount', $basePaid);
+                
+            \App\Services\TransactionFlowService::recordTransactionFlow(
+                5, // account_id
+                'credit',
+                $basePaid,
+                'liabilities_payment',
+                $externalInvoice->id,
+                [],
+                "Cost of Purchases credited for payment order {$paymentOrderNumber} (base amount: {$basePaid})",
+                $paymentOrderNumber,
+                now()->toDateString(),
+                $data['attachment'] ?? null,
+                $data['original_name'] ?? null
+            );
+        }
+
+        // Debit VAT Paid (id 8) with VAT amount - VAT expense increases when payment is made
         if ($vatPaid > 0) {
             \App\Services\TransactionFlowService::recordTransactionFlow(
                 8, // VAT Paid (on purchases)
-                'credit',
+                'debit',
                 $vatPaid,
                 'vat_paid',
                 $externalInvoice->id,
@@ -366,10 +413,10 @@ class AccountController extends Controller
                 $data['attachment'] ?? null,
                 $data['original_name'] ?? null
             );
-            // Update VAT Paid account's credit_amount
+            // Update VAT Paid account's debit_amount
             $vatAccount = \App\Models\Account::find(8);
             if ($vatAccount) {
-                $vatAccount->credit_amount += $vatPaid;
+                $vatAccount->debit_amount = ($vatAccount->debit_amount ?? 0) + $vatPaid;
                 $vatAccount->save();
             }
         }
@@ -381,6 +428,280 @@ class AccountController extends Controller
             $liabilitiesAccount->debit_amount = $totalDebits;
             $liabilitiesAccount->save();
         }
+    }
+
+    /**
+     * Handle Account 8 (VAT Paid) credit updates for VAT refunds from government
+     */
+    private function handleVatPaidAccountUpdate(Request $request, Account $account, float $originalCreditAmount): JsonResponse
+    {
+        DB::beginTransaction();
+        
+        \Log::info('=== ENTERED handleVatPaidAccountUpdate (NON-API) ===', [
+            'account_id' => $account->id,
+            'account_name' => $account->name
+        ]);
+
+        $data = $request->validated();
+        $creditAmount = floatval($data['credit_amount']);
+        $paymentOrderNumber = trim($data['invoice_number'] ?? '');
+
+        if (!$paymentOrderNumber) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Payment order number is required for Account 8 credit operations.',
+                'error' => 'Missing payment order number'
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        \Log::info('Looking up payment order for Account 8', [
+            'payment_order_number' => $paymentOrderNumber
+        ]);
+
+        // Find payment order
+        $paymentOrder = \App\Models\PaymentOrder::whereRaw('LOWER(TRIM(payment_order_number)) = ?', [strtolower($paymentOrderNumber)])->first();
+
+        if (!$paymentOrder) {
+            DB::rollBack();
+            \Log::error('Payment order not found for Account 8', [
+                'payment_order_number' => $paymentOrderNumber
+            ]);
+            return response()->json([
+                'message' => 'Payment order not found.',
+                'error' => 'Invalid payment order number'
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        // Calculate actual VAT paid for this payment order
+        $vatPaidController = new \App\Http\Controllers\Api\V1\VatPaidController();
+        $reflection = new \ReflectionClass($vatPaidController);
+        
+        // Get calculateActualVatPaid method
+        $calculateVatPaidMethod = $reflection->getMethod('calculateActualVatPaid');
+        $calculateVatPaidMethod->setAccessible(true);
+        $vatPaid = $calculateVatPaidMethod->invoke($vatPaidController, $paymentOrder);
+        
+        // Get calculateAccount8DebitsForPaymentOrder method
+        $calculateDebitsMethod = $reflection->getMethod('calculateAccount8DebitsForPaymentOrder');
+        $calculateDebitsMethod->setAccessible(true);
+        $account8Debits = $calculateDebitsMethod->invoke($vatPaidController, $paymentOrder->payment_order_number);
+        
+        // Get calculateAccount8CreditsForPaymentOrder method
+        $calculateCreditsMethod = $reflection->getMethod('calculateAccount8CreditsForPaymentOrder');
+        $calculateCreditsMethod->setAccessible(true);
+        $account8Credits = $calculateCreditsMethod->invoke($vatPaidController, $paymentOrder->payment_order_number);
+        
+        // Calculate VAT available for credit = VAT debited (paid) - VAT credited (refunded)
+        $vatAvailableForCredit = $account8Debits - $account8Credits;
+
+        \Log::info('Account 8 VAT calculation', [
+            'payment_order_number' => $paymentOrderNumber,
+            'vat_paid' => $vatPaid,
+            'account8_debits' => $account8Debits,
+            'account8_credits' => $account8Credits,
+            'vat_available_for_credit' => $vatAvailableForCredit,
+            'credit_amount_requested' => $creditAmount,
+            'credit_amount_type' => gettype($creditAmount),
+            'request_data' => $data
+        ]);
+        
+        // Validate that credit amount doesn't exceed available VAT for credit
+        // Use a small tolerance for floating point comparison
+        if ($creditAmount > ($vatAvailableForCredit + 0.01)) {
+            DB::rollBack();
+            \Log::warning('Account 8 credit validation failed', [
+                'credit_amount' => $creditAmount,
+                'vat_available_for_credit' => $vatAvailableForCredit,
+                'difference' => $creditAmount - $vatAvailableForCredit
+            ]);
+            return response()->json([
+                'message' => "Credit amount ({$creditAmount}) cannot exceed available VAT for credit ({$vatAvailableForCredit}). VAT debited: {$account8Debits}, VAT credited: {$account8Credits}",
+                'error' => 'Credit exceeds available VAT',
+                'vat_debited' => $account8Debits,
+                'vat_credited' => $account8Credits,
+                'vat_available_for_credit' => $vatAvailableForCredit,
+                'credit_amount_requested' => $creditAmount
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        // Update Account 8 with credit amount (increment credit, reduces VAT expense)
+        // IMPORTANT: Don't touch debit_amount - it should remain unchanged
+        // Note: invoice_number is stored in transaction flow, not in accounts table
+        $account->credit_amount = ($account->credit_amount ?? 0) + $creditAmount;
+        // Don't set invoice_number on account - it's not a column in accounts table
+        // The invoice_number will be stored in the transaction flow record
+        // Explicitly preserve debit_amount - don't update it
+        $account->save();
+
+        \Log::info('Account 8 updated', [
+            'new_credit_amount' => $account->credit_amount,
+            'credit_increment' => $creditAmount
+        ]);
+        
+        // Record transaction flow for Account 8 (VAT Paid) - credit reduces the expense
+        // IMPORTANT: This must be done BEFORE committing the transaction
+        $transactionFlow = null;
+        try {
+            // Reload account to get updated credit_amount for balance calculation
+            $account->refresh();
+            $account->load('accountCode'); // Ensure accountCode relationship is loaded
+            
+            \Log::info('About to record transaction flow for Account 8', [
+                'account_id' => $account->id,
+                'account_name' => $account->name,
+                'account_code_id' => $account->account_code_id,
+                'account_code_type' => $account->accountCode ? $account->accountCode->account_type : 'NULL',
+                'debit_amount' => $account->debit_amount,
+                'credit_amount' => $account->credit_amount,
+                'transaction_credit_amount' => $creditAmount,
+                'payment_order_number' => $paymentOrderNumber,
+                'payment_order_id' => $paymentOrder->id
+            ]);
+            
+            // Record the transaction flow - this creates a new record in the transactions_flow table
+            // IMPORTANT: This must happen within the DB transaction so it gets committed together
+            try {
+                $transactionFlow = TransactionFlowService::recordTransactionFlow(
+                    8, // account_id
+                    'credit',
+                    $creditAmount,
+                    'vat_paid_refund',
+                    $paymentOrder->id,
+                    [],
+                    "VAT Paid credited - VAT refunded from government (Payment Order: {$paymentOrderNumber})",
+                    $paymentOrderNumber,
+                    now()->toDateString(),
+                    $data['attachment'] ?? null,
+                    $data['original_name'] ?? null
+                );
+
+                // Verify the transaction flow was created
+                if (!$transactionFlow) {
+                    throw new \Exception('Transaction flow was not created - null returned from recordTransactionFlow');
+                }
+                
+                if (!$transactionFlow->id) {
+                    throw new \Exception('Transaction flow was not created - no ID returned');
+                }
+                
+                // Force save to ensure it's persisted (even though create() should do this)
+                $transactionFlow->save();
+                
+                \Log::info('Transaction flow created and saved', [
+                    'transaction_flow_id' => $transactionFlow->id,
+                    'account_id' => 8,
+                    'amount' => $creditAmount,
+                    'reference_number' => $paymentOrderNumber
+                ]);
+            } catch (\Exception $createException) {
+                \Log::error('Exception while creating transaction flow', [
+                    'error' => $createException->getMessage(),
+                    'trace' => $createException->getTraceAsString()
+                ]);
+                throw $createException; // Re-throw to be caught by outer catch
+            }
+
+            \Log::info('Transaction flow recorded successfully for Account 8', [
+                'transaction_flow_id' => $transactionFlow->id,
+                'account_id' => 8,
+                'transaction_type' => 'credit',
+                'amount' => $creditAmount,
+                'reference_number' => $paymentOrderNumber,
+                'account_debit_amount' => $account->debit_amount,
+                'account_credit_amount' => $account->credit_amount,
+                'balance_after' => $transactionFlow->balance_after ?? 'NOT SET',
+                'transaction_date' => $transactionFlow->transaction_date ?? 'NOT SET',
+                'description' => $transactionFlow->description ?? 'NOT SET'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to record transaction flow for Account 8', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'account_id' => $account->id,
+                'account_name' => $account->name,
+                'account_code_id' => $account->account_code_id,
+                'account_code' => $account->accountCode ? $account->accountCode->toArray() : 'NULL',
+                'credit_amount' => $creditAmount,
+                'payment_order_number' => $paymentOrderNumber
+            ]);
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to record transaction flow: ' . $e->getMessage(),
+                'error' => $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+        
+        DB::commit();
+
+        // Verify transaction flow was actually saved to database
+        // Use case-insensitive and trimmed comparison like in the calculation
+        $paymentOrderNumberTrimmed = trim($paymentOrderNumber);
+        
+        // Wait a moment for the database to be updated (sometimes needed for replication)
+        usleep(100000); // 100ms delay
+        
+        // First, check if the transaction flow we just created exists
+        $savedTransactionFlow = null;
+        if ($transactionFlow && $transactionFlow->id) {
+            $savedTransactionFlow = \App\Models\TransactionFlow::find($transactionFlow->id);
+        }
+        
+        // If not found by ID, try searching by criteria
+        if (!$savedTransactionFlow) {
+            $savedTransactionFlow = \App\Models\TransactionFlow::where('account_id', 8)
+                ->whereRaw('LOWER(TRIM(reference_number)) = ?', [strtolower($paymentOrderNumberTrimmed)])
+                ->where('transaction_type', 'credit')
+                ->where('amount', $creditAmount)
+                ->orderBy('id', 'desc')
+                ->first();
+        }
+        
+        // Also check all credit transactions for this payment order to see what's in the database
+        $allCreditsForPO = \App\Models\TransactionFlow::where('account_id', 8)
+            ->whereRaw('LOWER(TRIM(reference_number)) = ?', [strtolower($paymentOrderNumberTrimmed)])
+            ->where('transaction_type', 'credit')
+            ->select('id', 'reference_number', 'amount', 'transaction_date', 'description', 'created_at')
+            ->orderBy('id', 'desc')
+            ->get();
+        
+        \Log::info('=== ACCOUNT 8 CREDIT COMPLETED (NON-API) ===', [
+            'account_id' => $account->id,
+            'account_name' => $account->name,
+            'credit_amount' => $creditAmount,
+            'payment_order_number' => $paymentOrderNumber,
+            'payment_order_number_trimmed' => $paymentOrderNumberTrimmed,
+            'vat_debited' => $account8Debits,
+            'vat_credited' => $account8Credits + $creditAmount,
+            'vat_available_for_credit_remaining' => $vatAvailableForCredit - $creditAmount,
+            'transaction_flow_created_id' => $transactionFlow->id ?? 'NOT SET',
+            'transaction_flow_verified_in_db' => $savedTransactionFlow ? 'YES (ID: ' . $savedTransactionFlow->id . ')' : 'NO - NOT FOUND IN DATABASE',
+            'all_credits_for_po_count' => $allCreditsForPO->count(),
+            'all_credits_for_po' => $allCreditsForPO->map(function($t) {
+                return [
+                    'id' => $t->id,
+                    'reference_number' => $t->reference_number,
+                    'amount' => $t->amount,
+                    'transaction_date' => $t->transaction_date,
+                    'description' => $t->description,
+                    'created_at' => $t->created_at
+                ];
+            })->toArray()
+        ]);
+
+        if (!$savedTransactionFlow) {
+            \Log::error('CRITICAL: Transaction flow was not saved to database after commit!', [
+                'account_id' => 8,
+                'payment_order_number' => $paymentOrderNumber,
+                'credit_amount' => $creditAmount,
+                'expected_transaction_flow_id' => $transactionFlow->id ?? 'NOT SET'
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Account 8 updated successfully. Credit amount: ' . $creditAmount . ' SAR. VAT available for credit remaining: ' . ($vatAvailableForCredit - $creditAmount) . ' SAR',
+            'data' => new AccountResource($account->load(['costCenter', 'creator', 'updater'])),
+            'transaction_flow_id' => $transactionFlow->id ?? null
+        ], Response::HTTP_OK);
     }
 
     /**
@@ -773,13 +1094,44 @@ class AccountController extends Controller
                 }
             }
 
+            // Get external invoice to calculate base amount (VAT excluded from budget)
+            $externalInvoice = \App\Models\ExternalInvoice::where('purchase_order_id', $purchaseOrder->id)
+                ->whereNull('deleted_at')
+                ->first();
+            
+            if (!$externalInvoice) {
+                \Log::warning('=== EXTERNAL INVOICE NOT FOUND FOR BUDGET CONSUMPTION ===', [
+                    'payment_order_id' => $paymentOrder->id,
+                    'purchase_order_id' => $purchaseOrder->id
+                ]);
+                return;
+            }
+            
+            // Calculate base amount portion of payment (VAT excluded from budget consumption)
+            $invoiceBase = floatval($externalInvoice->amount);
+            $invoiceVat = floatval($externalInvoice->vat_amount);
+            $invoiceTotal = $invoiceBase + $invoiceVat;
+            
+            // Calculate proportion of payment that goes to base amount
+            $basePaymentAmount = 0;
+            if ($invoiceTotal > 0) {
+                $proportion = $paymentAmount / $invoiceTotal;
+                $basePaymentAmount = round($invoiceBase * $proportion, 2);
+            } else {
+                $basePaymentAmount = $paymentAmount; // Fallback if no invoice data
+            }
+            
             // Normal scenario: Single budget update (split budget transfer happens on PO approval, not payment)
             \Log::info('=== UPDATING BUDGET CONSUMPTION FOR PAYMENT ===', [
                 'payment_order_id' => $paymentOrder->id,
                 'purchase_order_id' => $purchaseOrder->id,
                 'request_budget_id' => $requestBudgetId,
                 'payment_amount' => $paymentAmount,
-                'po_total_amount' => $purchaseOrder->amount
+                'base_payment_amount' => $basePaymentAmount,
+                'vat_excluded' => $paymentAmount - $basePaymentAmount,
+                'po_base_amount' => $purchaseOrder->amount,
+                'po_vat_amount' => $purchaseOrder->vat_amount,
+                'note' => 'Only base amount consumed from budget (VAT excluded)'
             ]);
 
             // Step 3: Update Request Budget amounts
@@ -794,9 +1146,9 @@ class AccountController extends Controller
                 ]);
             }
 
-            // Calculate new values
-            $newConsumedAmount = $currentBudget->consumed_amount + $paymentAmount;
-            $newReservedAmount = $currentBudget->reserved_amount - $paymentAmount;
+            // Calculate new values - only base amount consumed (VAT excluded)
+            $newConsumedAmount = $currentBudget->consumed_amount + $basePaymentAmount;
+            $newReservedAmount = $currentBudget->reserved_amount - $basePaymentAmount;
 
             \Log::info('=== CALCULATED NEW VALUES ===', [
                 'new_consumed_amount' => $newConsumedAmount,
@@ -812,13 +1164,34 @@ class AccountController extends Controller
                     'updated_at' => now()
                 ]);
 
+            // Create audit log for budget consumption
+            if ($budgetUpdated) {
+                \Illuminate\Support\Facades\DB::table('budget_audit_logs')->insert([
+                    'request_budget_id' => $requestBudgetId,
+                    'purchase_order_id' => $purchaseOrder->id,
+                    'action' => 'consume',
+                    'amount' => $basePaymentAmount,
+                    'reserved_amount_before' => $currentBudget->reserved_amount,
+                    'reserved_amount_after' => $newReservedAmount,
+                    'balance_amount_before' => $currentBudget->balance_amount,
+                    'balance_amount_after' => $currentBudget->balance_amount, // Balance doesn't change on consumption
+                    'notes' => "Payment made for PO {$purchaseOrder->purchase_order_no} via Payment Order {$paymentOrder->payment_order_number}. Base amount: {$basePaymentAmount} SAR (VAT excluded from budget).",
+                    'created_by' => auth()->id(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+
             \Log::info('=== BUDGET CONSUMPTION UPDATE RESULT ===', [
                 'payment_order_id' => $paymentOrder->id,
                 'purchase_order_id' => $purchaseOrder->id,
                 'request_budget_id' => $requestBudgetId,
                 'budget_update_success' => $budgetUpdated,
-                'amount_added_to_consumed' => $paymentAmount,
-                'amount_reduced_from_reserved' => $paymentAmount
+                'base_amount_added_to_consumed' => $basePaymentAmount,
+                'base_amount_reduced_from_reserved' => $basePaymentAmount,
+                'total_payment_amount' => $paymentAmount,
+                'vat_excluded_from_budget' => $paymentAmount - $basePaymentAmount,
+                'note' => 'Only base amount affects budget (VAT is receivable asset, not budget expense)'
             ]);
 
             // Verify the update worked

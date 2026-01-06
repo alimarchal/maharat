@@ -2386,10 +2386,12 @@ class TaskController extends Controller
                                     $alternativeReservedAmount = floatval($purchaseOrder->alternative_budget_amount ?? 0);
                                     
                                     // Calculate PO total amount
-                                    $poTotalAmount = floatval($purchaseOrder->amount ?? 0) + floatval($purchaseOrder->vat_amount ?? 0);
+                                    $poBaseAmount = floatval($purchaseOrder->amount ?? 0);
+                                    $poVatAmount = floatval($purchaseOrder->vat_amount ?? 0);
+                                    $poTotalAmount = $poBaseAmount + $poVatAmount; // For reference only
                                     
                                     // For current subcost center (original):
-                                    // 1. reserved_amount = reserved_amount + PO total amount (already done during PO creation)
+                                    // 1. reserved_amount = reserved_amount + PO base amount (already done during PO creation, VAT excluded)
                                     // 2. balance_amount = balance_amount + shortage amount
                                     $shortageAmount = $alternativeReservedAmount;
                                     $tempBalance = $originalBudget->balance_amount + $shortageAmount;
@@ -2457,52 +2459,38 @@ class TaskController extends Controller
                                 }
                             } else {
                                 // Handle reallocated budget PO approval
-                                // Use the request_budget_id from the purchase order directly
+                                // IMPORTANT: Budget is already reserved when PO is created, so we should NOT reserve again on approval
+                                // Only log the approval action for audit purposes, but do NOT modify budget amounts
                                 if ($purchaseOrder->request_budget_id) {
                                     $budget = DB::table('request_budgets')
                                         ->where('id', $purchaseOrder->request_budget_id)
                                         ->first();
                                     
                                     if ($budget) {
-                                        Log::info('=== REALLOCATED BUDGET PO APPROVAL - UPDATING RESERVE AND BALANCE ===', [
-                                            'purchase_order_id' => $task->purchase_order_id,
-                                            'request_budget_id' => $purchaseOrder->request_budget_id,
-                                            'budget_sub_cost_center' => $budget->sub_cost_center,
-                                            'po_amount' => $purchaseOrder->amount,
-                                            'po_vat_amount' => $purchaseOrder->vat_amount
-                                        ]);
+                                        // Check if budget was already reserved for this PO
+                                        $existingReserveLog = DB::table('budget_audit_logs')
+                                            ->where('request_budget_id', $budget->id)
+                                            ->where('purchase_order_id', $task->purchase_order_id)
+                                            ->where('action', 'reserve')
+                                            ->first();
                                         
-                                        // Calculate PO total amount
-                                        $poTotalAmount = floatval($purchaseOrder->amount ?? 0) + floatval($purchaseOrder->vat_amount ?? 0);
-                                        
-                                        // Store old values for logging
-                                        $oldReservedAmount = floatval($budget->reserved_amount ?? 0);
-                                        $oldBalanceAmount = floatval($budget->balance_amount ?? 0);
-                                        
-                                        // Update reserve_amount and balance_amount
-                                        // reserve_amount = reserve_amount + PO total amount
-                                        // balance_amount = balance_amount - PO total amount
-                                        $newReservedAmount = $oldReservedAmount + $poTotalAmount;
-                                        $newBalanceAmount = $oldBalanceAmount - $poTotalAmount;
-                                        
-                                        DB::table('request_budgets')
-                                            ->where('id', $budget->id)
-                                            ->update([
-                                                'reserved_amount' => $newReservedAmount,
-                                                'balance_amount' => $newBalanceAmount,
-                                                'updated_at' => now()
+                                        if ($existingReserveLog) {
+                                            // Budget already reserved during PO creation - no need to log approval
+                                            // Approval does not change budget, so no audit log entry needed
+                                            Log::info('=== PO APPROVAL - BUDGET ALREADY RESERVED (NO AUDIT LOG NEEDED) ===', [
+                                                'purchase_order_id' => $task->purchase_order_id,
+                                                'request_budget_id' => $purchaseOrder->request_budget_id,
+                                                'existing_reserve_log_id' => $existingReserveLog->id,
+                                                'note' => 'Budget was already reserved when PO was created. Approval does not reserve budget again. No audit log entry created.'
                                             ]);
-                                        
-                                        Log::info('=== BUDGET UPDATED ON PO APPROVAL (USING REQUEST_BUDGET_ID) ===', [
-                                            'budget_id' => $budget->id,
-                                            'budget_sub_cost_center' => $budget->sub_cost_center,
-                                            'reserved_amount_before' => $oldReservedAmount,
-                                            'reserved_amount_after' => $newReservedAmount,
-                                            'balance_amount_before' => $oldBalanceAmount,
-                                            'balance_amount_after' => $newBalanceAmount,
-                                            'po_total_amount' => $poTotalAmount,
-                                            'note' => 'reserve_amount increased, balance_amount decreased'
-                                        ]);
+                                        } else {
+                                            // This should not happen in normal flow, but handle it for safety
+                                            Log::warning('=== PO APPROVAL - NO RESERVE LOG FOUND (UNEXPECTED) ===', [
+                                                'purchase_order_id' => $task->purchase_order_id,
+                                                'request_budget_id' => $purchaseOrder->request_budget_id,
+                                                'note' => 'PO approval found no existing reserve log. This may indicate the PO was created before logging was implemented.'
+                                            ]);
+                                        }
                                     } else {
                                         Log::warning('=== PO APPROVAL - BUDGET NOT FOUND ===', [
                                             'purchase_order_id' => $task->purchase_order_id,

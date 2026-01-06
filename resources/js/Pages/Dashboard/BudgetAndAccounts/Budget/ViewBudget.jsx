@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { usePage } from "@inertiajs/react";
+import { usePage, Link } from "@inertiajs/react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 
 const ViewBudget = () => {
@@ -206,36 +208,56 @@ const ViewBudget = () => {
                             </td>
                         </tr>
                     ) : budgets.length > 0 ? (
-                        budgets.map((budget) => (
-                            <tr key={budget.id}>
-                                <td className="py-3 px-4">
-                                    {budget.cost_center?.name}
-                                </td>
-                                <td className="py-3 px-4">
-                                    {budget.sub_cost_center?.name}
-                                </td>
-                                <td className="py-3 px-4">
-                                    {budget.department?.name}
-                                </td>
-                                <td className="py-3 px-4 text-blue-500">
-                                    {parseFloat(
-                                        budget.total_expense_planned
-                                    ).toLocaleString()}
-                                </td>
-                                <td className="py-3 px-4 text-green-500">
-                                    {parseFloat(
-                                        budget.request_budget
-                                            ?.approved_amount || 0
-                                    ).toLocaleString()}
-                                </td>
-                                <td className="py-3 px-4 text-red-500">
-                                    {parseFloat(
-                                        budget.request_budget
-                                            ?.balance_amount || 0
-                                    ).toLocaleString()}
-                                </td>
-                            </tr>
-                        ))
+                        budgets.map((budget) => {
+                            const requestBudgetId = budget.request_budget?.id;
+
+                            return (
+                                <tr key={budget.id}>
+                                    <td className="py-3 px-4">
+                                        {budget.cost_center?.name}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {budget.sub_cost_center?.name}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        {budget.department?.name}
+                                    </td>
+                                    <td className="py-3 px-4 text-blue-500">
+                                        {parseFloat(
+                                            budget.total_expense_planned
+                                        ).toLocaleString()}
+                                    </td>
+                                    <td className="py-3 px-4 text-green-500">
+                                        {parseFloat(
+                                            budget.request_budget
+                                                ?.approved_amount || 0
+                                        ).toLocaleString()}
+                                    </td>
+                                    <td className="py-3 px-4 text-red-500">
+                                        <div className="flex items-center justify-between">
+                                            <span>
+                                                {parseFloat(
+                                                    budget.request_budget
+                                                        ?.balance_amount || 0
+                                                ).toLocaleString()}
+                                            </span>
+                                            {requestBudgetId && (
+                                                <Link
+                                                    href={`/budget/transactions/${requestBudgetId}`}
+                                                    className="text-[#009FDC] hover:text-[#007CB8] ml-2 transition-colors"
+                                                    title="View transaction details"
+                                                >
+                                                    <FontAwesomeIcon
+                                                        icon={faChevronRight}
+                                                        className="w-4 h-4"
+                                                    />
+                                                </Link>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })
                     ) : (
                         <tr>
                             <td colSpan="6" className="py-4">

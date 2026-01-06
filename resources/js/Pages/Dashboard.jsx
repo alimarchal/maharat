@@ -34,6 +34,7 @@ import ViewIncomeStatement from "./Dashboard/BudgetAndAccounts/IncomeStatement/V
 import BudgetTable from "./Dashboard/BudgetAndAccounts/Budget/BudgetTable";
 import CreateBudget from "./Dashboard/BudgetAndAccounts/Budget/CreateBudget";
 import ViewBudget from "./Dashboard/BudgetAndAccounts/Budget/ViewBudget";
+import BudgetTransactionDetails from "./Dashboard/BudgetAndAccounts/Budget/BudgetTransactionDetails";
 import EditFiscalPeriod from "./Dashboard/BudgetAndAccounts/Budget/EditFiscalPeriod";
 import ViewBalanceSheet from "./Dashboard/BudgetAndAccounts/BalanceSheet/ViewBalanceSheet";
 import BudgetRequestForm from "./Dashboard/BudgetAndAccounts/RequestABudget/BudgetRequestForm";
@@ -225,6 +226,8 @@ export default function Dashboard({ auth, page }) {
             return <CreateBudget />;
         if (page === "BudgetAndAccounts/Budget/ViewBudget")
             return <ViewBudget />;
+        if (page === "BudgetAndAccounts/Budget/BudgetTransactionDetails")
+            return <BudgetTransactionDetails />;
         if (page === "BudgetAndAccounts/Budget/EditFiscalPeriod")
             return <EditFiscalPeriod />;
         if (page === "BudgetAndAccounts/RequestABudget/RequestBudgetTable")

@@ -88,6 +88,8 @@ use App\Http\Controllers\Api\V1\AccountCodeController;
 use App\Http\Controllers\Api\V1\TransactionFlowController;
 use App\Http\Controllers\Api\V1\UploadController;
 use App\Http\Controllers\Api\V1\GrnApprovalTransactionController;
+use App\Http\Controllers\Api\V1\VatReceivableController;
+use App\Http\Controllers\Api\V1\VatPaidController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -295,6 +297,12 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // Account Codes routes
     Route::apiResource('account-codes', AccountCodeController::class);
 
+    // VAT Receivable routes
+    Route::get('vat-receivable', [VatReceivableController::class, 'index']);
+    Route::post('vat-receivable/refund', [VatReceivableController::class, 'store']);
+    
+    Route::get('vat-paid', [VatPaidController::class, 'index']);
+
     Route::get('chart-of-accounts-tree', [ChartOfAccountController::class, 'tree']);
     Route::post('chart-of-accounts/{id}/restore', [ChartOfAccountController::class, 'restore']);
     Route::apiResource('chart-of-accounts', ChartOfAccountController::class);
@@ -312,6 +320,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('request-budgets/{id}/restore', [RequestBudgetController::class, 'restore']);
     Route::patch('request-budgets/{requestBudget}/status', [RequestBudgetController::class, 'updateStatus']);
     Route::put('request-budgets/{requestBudget}/update-destination', [RequestBudgetController::class, 'updateDestination']);
+    Route::get('request-budgets/{requestBudget}/audit-logs', [RequestBudgetController::class, 'getAuditLogs']);
     
     // Budget Request Attachments
     Route::post('budget-request-attachments', [App\Http\Controllers\Api\V1\BudgetRequestAttachmentController::class, 'store']);

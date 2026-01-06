@@ -190,16 +190,42 @@ class BudgetValidationService
 
     /**
      * Reserve budget for purchase order
+     * @param mixed $budget The budget object
+     * @param float $amount The amount to reserve
+     * @param int|null $purchaseOrderId Optional PO ID to check for duplicate reservations
+     * @return mixed The updated budget object
      */
-    public function reserveBudget($budget, $amount)
+public function reserveBudget($budget, $amount, $purchaseOrderId = null)
     {
         \Log::info('BudgetValidationService: Reserving budget', [
             'budgetId' => $budget->id,
             'amount' => $amount,
+            'purchase_order_id' => $purchaseOrderId,
             'before_reserved_amount' => $budget->reserved_amount,
             'before_balance_amount' => $budget->balance_amount,
             'before_consumed_amount' => $budget->consumed_amount
         ]);
+
+        // Safeguard: Check if budget was already reserved for this PO
+        if ($purchaseOrderId) {
+            $existingReserve = \Illuminate\Support\Facades\DB::table('budget_audit_logs')
+                ->where('request_budget_id', $budget->id)
+                ->where('purchase_order_id', $purchaseOrderId)
+                ->where('action', 'reserve')
+                ->where('amount', '>', 0) // Only count actual reservations (amount > 0)
+                ->first();
+            
+            if ($existingReserve) {
+                \Log::warning('BudgetValidationService: Duplicate reservation prevented', [
+                    'budgetId' => $budget->id,
+                    'purchase_order_id' => $purchaseOrderId,
+                    'existing_reserve_log_id' => $existingReserve->id,
+                    'amount' => $amount,
+                    'note' => 'Budget was already reserved for this PO. Skipping duplicate reservation.'
+                ]);
+                return $budget; // Return unchanged budget
+            }
+        }
 
         $budget->reserved_amount += $amount;
         $budget->balance_amount -= $amount;

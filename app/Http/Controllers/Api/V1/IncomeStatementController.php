@@ -62,10 +62,18 @@ class IncomeStatementController extends Controller
                 'to_date' => 'required|date|after_or_equal:from_date'
             ]);
 
-            $expenses = TransactionFlow::whereIn('account_id', [5,6,7])
+            // Expense accounts: expenses increase with debits, decrease with credits
+            // So we sum debits (expense increases) minus credits (expense decreases)
+            // Include Account 8 (VAT Paid) in expenses: debits - credits (this cancels out VAT refunds)
+            $debits = TransactionFlow::whereIn('account_id', [5,6,7,8])
+                ->where('transaction_type', 'debit')
+                ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+                ->sum('amount');
+            $credits = TransactionFlow::whereIn('account_id', [5,6,7,8])
                 ->where('transaction_type', 'credit')
                 ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
                 ->sum('amount');
+            $expenses = $debits - $credits;
 
             return response()->json([
                 'success' => true,
@@ -129,7 +137,22 @@ class IncomeStatementController extends Controller
                 'to_date' => 'required|date|after_or_equal:from_date'
             ]);
 
-            $vatPaid = TransactionFlow::whereIn('account_id', [8, 9])
+            // Account 8 (VAT Paid): Calculate as debits minus credits (VAT paid minus VAT refunded)
+            // This cancels out and shows net VAT expense impact
+            $vatPaidDebits = TransactionFlow::where('account_id', 8)
+                ->where('transaction_type', 'debit')
+                ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+                ->sum('amount');
+            
+            $vatPaidCredits = TransactionFlow::where('account_id', 8)
+                ->where('transaction_type', 'credit')
+                ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+                ->sum('amount');
+            
+            $vatPaid = (float)($vatPaidDebits - $vatPaidCredits);
+
+            // Account 9 (VAT Collected on Maharat invoices) - for sales
+            $vatCollected = TransactionFlow::where('account_id', 9)
                 ->where('transaction_type', 'credit')
                 ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
                 ->sum('amount');
@@ -137,7 +160,11 @@ class IncomeStatementController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'vat_paid' => (float)$vatPaid ?? 0
+                    'vat_paid' => $vatPaid,
+                    'vat_collected' => (float)$vatCollected ?? 0,
+                    'vat_paid_debits' => (float)$vatPaidDebits ?? 0,
+                    'vat_paid_credits' => (float)$vatPaidCredits ?? 0,
+                    'note' => 'VAT Paid (Account 8) is calculated as debits minus credits (VAT paid minus VAT refunded).'
                 ]
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
@@ -236,20 +263,65 @@ class IncomeStatementController extends Controller
             'from_date' => 'required|date',
             'to_date' => 'required|date|after_or_equal:from_date'
         ]);
-        $transactions = TransactionFlow::with('account')
-            ->whereIn('account_id', [5,6,7])
-            ->where('transaction_type', 'credit')
+        // Get both debits and credits for expense accounts (including Account 8 - VAT Paid)
+        // For Accounts 5,6,7: debits are positive (expense increases), credits are negative (expense decreases)
+        // For Account 8: debits are negative (VAT paid), credits are positive (VAT refunded) with different label
+        $debitTransactions = TransactionFlow::with('account')
+            ->whereIn('account_id', [5,6,7,8])
+            ->where('transaction_type', 'debit')
             ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
-            ->orderBy('transaction_date')
             ->get()
             ->map(function($t) {
+                $accountName = $t->account->name ?? 'Unknown';
+                // For Account 8, use "VAT Paid (on purchases)" label
+                if ($t->account_id == 8) {
+                    $accountName = 'VAT Paid (on purchases)';
+                    return [
+                        'reference_number' => $t->reference_number,
+                        'account_name' => $accountName,
+                        'amount' => -(float)$t->amount, // Negative for Account 8 debits (VAT paid)
+                        'description' => $t->description,
+                        'type' => 'debit'
+                    ];
+                }
+                // For Accounts 5,6,7, debits are positive
                 return [
                     'reference_number' => $t->reference_number,
-                    'account_name' => $t->account->name ?? '',
-                    'amount' => $t->amount,
+                    'account_name' => $accountName,
+                    'amount' => (float)$t->amount,
                     'description' => $t->description,
+                    'type' => 'debit'
                 ];
             });
+        
+        $creditTransactions = TransactionFlow::with('account')
+            ->whereIn('account_id', [5,6,7,8])
+            ->where('transaction_type', 'credit')
+            ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+            ->get()
+            ->map(function($t) {
+                $accountName = $t->account->name ?? 'Unknown';
+                // For Account 8, use "VAT Refunded (on purchases)" label and positive amount
+                if ($t->account_id == 8) {
+                    $accountName = 'VAT Refunded (on purchases)';
+                    return [
+                        'reference_number' => $t->reference_number,
+                        'account_name' => $accountName,
+                        'amount' => (float)$t->amount, // Positive for Account 8 credits (VAT refunded)
+                        'description' => $t->description,
+                        'type' => 'credit'
+                    ];
+                }
+                // For Accounts 5,6,7, credits are negative (expense decreases)
+                return [
+                    'reference_number' => $t->reference_number,
+                    'account_name' => $accountName,
+                    'amount' => -(float)$t->amount, // Negative for credits (expense decreases)
+                    'description' => $t->description,
+                    'type' => 'credit'
+                ];
+            });
+        $transactions = $debitTransactions->concat($creditTransactions)->sortBy('transaction_date')->values();
         return response()->json(['data' => $transactions]);
     }
 
@@ -259,8 +331,26 @@ class IncomeStatementController extends Controller
             'from_date' => 'required|date',
             'to_date' => 'required|date|after_or_equal:from_date'
         ]);
-        $transactions = TransactionFlow::with('account')
-            ->whereIn('account_id', [8,9])
+        // Account 8 (VAT Paid): Include both debits (VAT paid) and credits (VAT refunded)
+        // Debits are negative (VAT paid), credits are positive (VAT refunded)
+        $debitTransactions = TransactionFlow::with('account')
+            ->where('account_id', 8)
+            ->where('transaction_type', 'debit')
+            ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
+            ->orderBy('transaction_date')
+            ->get()
+            ->map(function($t) {
+                return [
+                    'reference_number' => $t->reference_number,
+                    'account_name' => 'VAT Paid (on purchases)',
+                    'amount' => -(float)$t->amount, // Negative for debits (VAT paid)
+                    'description' => $t->description,
+                    'type' => 'debit'
+                ];
+            });
+        
+        $creditTransactions = TransactionFlow::with('account')
+            ->where('account_id', 8)
             ->where('transaction_type', 'credit')
             ->whereBetween('transaction_date', [$request->from_date, $request->to_date])
             ->orderBy('transaction_date')
@@ -268,11 +358,18 @@ class IncomeStatementController extends Controller
             ->map(function($t) {
                 return [
                     'reference_number' => $t->reference_number,
-                    'account_name' => $t->account->name ?? '',
-                    'amount' => $t->amount,
+                    'account_name' => 'VAT Refunded (on purchases)',
+                    'amount' => (float)$t->amount, // Positive for credits (VAT refunded)
                     'description' => $t->description,
+                    'type' => 'credit'
                 ];
             });
+        
+        // Combine debits and credits, sorted by date
+        $transactions = $debitTransactions->concat($creditTransactions)
+            ->sortBy('transaction_date')
+            ->values();
+        
         return response()->json(['data' => $transactions]);
     }
 

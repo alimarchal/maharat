@@ -24,13 +24,15 @@ class PaymentOrder extends Model
         'uploaded_attachment',
         'total_amount',
         'vat_amount',
+        'vat_refunded_amount',
         'paid_amount',
         'status'
     ];
 
     protected $casts = [
         'issue_date' => 'date',
-        'due_date' => 'date'
+        'due_date' => 'date',
+        'vat_refunded_amount' => 'decimal:2'
     ];
 
     /**

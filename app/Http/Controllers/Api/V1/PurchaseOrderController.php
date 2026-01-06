@@ -177,24 +177,27 @@ class PurchaseOrderController extends Controller
 
             \Log::info('PurchaseOrder Store - Selected fiscal period ID: ' . $fiscalPeriodId);
 
-            // Calculate total amount including VAT for budget validation
+            // Calculate amounts - VAT is excluded from budget calculations
             $baseAmount = floatval($validatedData['amount'] ?? 0);
             $vatAmount = floatval($validatedData['vat_amount'] ?? 0);
-            $totalAmount = $baseAmount + $vatAmount;
+            $totalAmount = $baseAmount + $vatAmount; // Total for display/accounting
+            $budgetAmount = $baseAmount; // Only base amount for budget (VAT excluded as it will be refunded)
 
             \Log::info('PurchaseOrder Store - Amount calculation', [
                 'base_amount' => $baseAmount,
                 'vat_amount' => $vatAmount,
-                'total_amount' => $totalAmount
+                'total_amount' => $totalAmount,
+                'budget_amount' => $budgetAmount,
+                'note' => 'Budget uses base amount only (VAT excluded)'
             ]);
 
-            // Validate budget availability with total amount (including VAT)
+            // Validate budget availability with base amount only (excluding VAT)
             $budgetValidation = $budgetService->validateBudgetAvailability(
                 $rfq->department_id,
                 $rfq->cost_center_id,
                 $rfq->sub_cost_center_id,
                 $fiscalPeriodId,
-                $totalAmount
+                $budgetAmount
             );
 
             \Log::info('PurchaseOrder Store - Budget validation result: ' . json_encode($budgetValidation));
@@ -208,7 +211,7 @@ class PurchaseOrderController extends Controller
                 // Budget validation failed - create reallocation request
                 // Sub cost center will be selected during approval process
                 $availableAmount = $budgetValidation['available_amount'] ?? 0;
-                $shortfallAmount = $budgetValidation['shortfall_amount'] ?? $totalAmount;
+                $shortfallAmount = $budgetValidation['shortfall_amount'] ?? $budgetAmount; // Use budget amount (excludes VAT)
                 $alternatives = $budgetValidation['alternatives'] ?? [];
                 
                 // Get the original budget (source budget for reallocation)
@@ -266,12 +269,15 @@ class PurchaseOrderController extends Controller
                     'sub_cost_center_id' => $normalBudget->sub_cost_center,
                     'reserved_amount_before' => $normalReservedBefore,
                     'balance_amount_before' => $normalBalanceBefore,
+                    'po_base_amount' => $budgetAmount,
+                    'po_vat_amount' => $vatAmount,
                     'po_total_amount' => $totalAmount,
-                    'note' => 'This happens when PO request is created, NOT after approval'
+                    'note' => 'Budget reserved with base amount only (VAT excluded)'
                 ]);
                 
-                // Reserve budget with total amount (including VAT)
-                $budgetService->reserveBudget($normalBudget, $totalAmount);
+                // Reserve budget with base amount only (VAT excluded as it will be refunded by government)
+                // Note: purchase_order_id will be passed after PO is created (see below)
+                $budgetService->reserveBudget($normalBudget, $budgetAmount);
                 
                 // Refresh budget to get updated values
                 $normalBudget->refresh();
@@ -291,17 +297,17 @@ class PurchaseOrderController extends Controller
                     'note' => 'Budget updated when PO request is made - reserved_amount increased, balance_amount decreased'
                 ]);
                 
-                // Log audit
+                // Log audit - record base amount only (VAT excluded)
                 $normalAuditLogId = DB::table('budget_audit_logs')->insertGetId([
                     'request_budget_id' => $normalBudget->id,
                     'purchase_order_id' => null, // Will be updated after PO is created
                     'action' => 'reserve',
-                    'amount' => $totalAmount,
+                    'amount' => $budgetAmount, // Base amount only (VAT excluded)
                     'reserved_amount_before' => $normalReservedBefore,
                     'reserved_amount_after' => $normalBudget->reserved_amount,
                     'balance_amount_before' => $normalBalanceBefore,
                     'balance_amount_after' => $normalBudget->balance_amount,
-                    'notes' => 'PO created - reserved budget',
+                    'notes' => "PO created - reserved budget. Base amount: {$budgetAmount} SAR (VAT: {$vatAmount} SAR excluded from budget). Budget is reserved ONCE during PO creation, NOT on approval.",
                     'created_by' => auth()->id(),
                     'created_at' => now(),
                     'updated_at' => now()
