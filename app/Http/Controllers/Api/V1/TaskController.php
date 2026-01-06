@@ -3382,6 +3382,44 @@ class TaskController extends Controller
                                 'grn_updated' => $grnUpdated
                             ]);
                             $this->updatePurchaseOrderWithGrnAdjustment($task->grn_id);
+                            
+                            // Update material request status when GRN is fully delivered or adjusted and closed
+                            try {
+                                $grn = \App\Models\Grn::find($task->grn_id);
+                                if ($grn && $grn->purchase_order_id) {
+                                    $grnStatus = $grn->status;
+                                    $grnTaskStatus = $grn->task_status;
+                                    
+                                    Log::info('=== CHECKING IF MATERIAL REQUEST STATUS SHOULD BE UPDATED ===', [
+                                        'grn_id' => $grn->id,
+                                        'grn_status' => $grnStatus,
+                                        'grn_task_status' => $grnTaskStatus,
+                                        'purchase_order_id' => $grn->purchase_order_id
+                                    ]);
+                                    
+                                    // Update material request status if GRN is fully delivered or adjusted and task is approved
+                                    if (in_array($grnStatus, ['Fully Delivered', 'Adjusted Delivery']) && $grnTaskStatus === 'Approved') {
+                                        Log::info('=== TRIGGERING MATERIAL REQUEST STATUS UPDATE ===', [
+                                            'grn_id' => $grn->id,
+                                            'grn_status' => $grnStatus,
+                                            'grn_task_status' => $grnTaskStatus
+                                        ]);
+                                        
+                                        $grnController = new \App\Http\Controllers\Api\V1\GrnController();
+                                        $grnController->updateMaterialRequestStatus($grn);
+                                        
+                                        Log::info('=== MATERIAL REQUEST STATUS UPDATE COMPLETED ===', [
+                                            'grn_id' => $grn->id
+                                        ]);
+                                    }
+                                }
+                            } catch (\Exception $e) {
+                                Log::error('=== FAILED TO UPDATE MATERIAL REQUEST STATUS AFTER GRN APPROVAL ===', [
+                                    'grn_id' => $task->grn_id,
+                                    'error' => $e->getMessage(),
+                                    'trace' => $e->getTraceAsString()
+                                ]);
+                            }
                         } else {
                             Log::warning('=== GRN UPDATE FAILED - NOT CALLING ADJUSTMENT ===', [
                                 'task_id' => $task->id,
