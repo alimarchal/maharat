@@ -90,18 +90,22 @@ const AccountsModal = ({
                                 
                                 // Show payment order if it has any unpaid amount
                                 if (poUnpaid > 0) {
+                                    // Use JSX label to preserve colored formatting for unpaid amount
                                     const option = {
                                         id: po.payment_order_number,
                                         label: (
                                             <span>
-                                                {po.payment_order_number} <span className="text-xs font-bold text-red-600">(UnPaid Amount: {poUnpaid.toFixed(2)})</span>
+                                                {po.payment_order_number}{" "}
+                                                <span className="text-xs font-bold text-red-600">
+                                                    (UnPaid Amount: {poUnpaid.toFixed(2)})
+                                                </span>
                                             </span>
                                         ),
                                         value: po.payment_order_number,
                                         unpaid: poUnpaid,
-                                        purchase_order_id: po.purchase_order_id
+                                        purchase_order_id: po.purchase_order_id,
                                     };
-                                    
+
                                     paymentOrderOptions.push(option);
                                 }
                             }
@@ -124,14 +128,19 @@ const AccountsModal = ({
                                     const amount = Number(inv.total_amount || inv.amount || 0);
                                     const paid = Number(inv.paid_amount || 0);
                                     const unpaid = amount - paid;
+
+                                    // Use JSX label to preserve colored formatting for unpaid amount
                                     return {
                                         id: inv.invoice_number,
                                         label: (
                                             <span>
-                                                {inv.invoice_number} <span className="text-xs font-bold text-red-600">(UnPaid Amount: {unpaid.toFixed(2)})</span>
+                                                {inv.invoice_number}{" "}
+                                                <span className="text-xs font-bold text-red-600">
+                                                    (UnPaid Amount: {unpaid.toFixed(2)})
+                                                </span>
                                             </span>
                                         ),
-                                        value: inv.invoice_number
+                                        value: inv.invoice_number,
                                     };
                                 });
                             setEligibleMaharatInvoices(invoices);
@@ -727,10 +736,23 @@ const AccountsModal = ({
                                     name="invoice_number"
                                     value={formData.invoice_number}
                                     onChange={handleChange}
-                                    options={eligiblePaymentOrders.length > 0 ? eligiblePaymentOrders : [{ id: '', label: 'No payment orders available', value: '', disabled: true }]}
+                                    options={
+                                        eligiblePaymentOrders.length > 0
+                                            ? eligiblePaymentOrders
+                                            : [
+                                                {
+                                                    id: "",
+                                                    label: "No payment orders available",
+                                                    value: "",
+                                                    disabled: true,
+                                                },
+                                            ]
+                                    }
                                     loading={loadingPaymentOrders}
                                     placeholder="Select Payment Order"
-                                    disabled={eligiblePaymentOrders.length === 0}
+                                    // Keep dropdown usable even when there are no references;
+                                    // the options will show a disabled "No payment orders available" entry.
+                                    disabled={false}
                                     allowCustomValue={false} // Enforce dropdown-only
                                 />
                             ) : isEdit && account && account.id === 12 ? (
@@ -739,10 +761,23 @@ const AccountsModal = ({
                                     name="invoice_number"
                                     value={formData.invoice_number}
                                     onChange={handleChange}
-                                    options={eligibleMaharatInvoices.length > 0 ? eligibleMaharatInvoices : [{ id: '', label: 'No Maharat invoices available', value: '', disabled: true }]}
+                                    options={
+                                        eligibleMaharatInvoices.length > 0
+                                            ? eligibleMaharatInvoices
+                                            : [
+                                                {
+                                                    id: "",
+                                                    label: "No Maharat invoices available",
+                                                    value: "",
+                                                    disabled: true,
+                                                },
+                                            ]
+                                    }
                                     loading={loadingMaharatInvoices}
                                     placeholder="Select Maharat Invoice"
-                                    disabled={eligibleMaharatInvoices.length === 0}
+                                    // Keep dropdown usable even when there are no references;
+                                    // the options will show a disabled "No Maharat invoices available" entry.
+                                    disabled={false}
                                     allowCustomValue={false}
                                 />
                             ) : (

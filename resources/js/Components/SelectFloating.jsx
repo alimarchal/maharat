@@ -157,12 +157,18 @@ const SelectFloating = ({ label, name, value, onChange, options, onScroll, loadi
                                                     )
                                                 )}
                                             </div>
+                                        ) : typeof option.label === 'string' ? (
+                                            <span
+                                                dangerouslySetInnerHTML={{
+                                                    __html: option.label.replace(
+                                                        /\(Available: ([\d,.]+)\)/g,
+                                                        '<span class="text-green-600 font-medium">(Available: $1)</span>'
+                                                    ),
+                                                }}
+                                            />
                                         ) : (
-                                            <span dangerouslySetInnerHTML={{
-                                                __html: typeof option.label === 'string' 
-                                                    ? option.label.replace(/\(Available: ([\d,.]+)\)/g, '<span class="text-green-600 font-medium">(Available: $1)</span>')
-                                                    : String(option.label)
-                                            }} />
+                                            // Support React elements or other JSX labels (e.g. colored unpaid amount)
+                                            <span>{option.label}</span>
                                         )}
                                     </div>
                                 )
