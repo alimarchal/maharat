@@ -21,7 +21,6 @@ const AccountsModal = ({
         status: "Approved",
         description: "",
         account_code_id: "",
-        cost_center_id: "",
         credit_amount: "",
         debit_amount: "",
         invoice_number: "",
@@ -51,7 +50,6 @@ const AccountsModal = ({
                         account_number: account.account_number || "",
                         description: account.description || "",
                         account_code_id: account.account_code_id || "",
-                        cost_center_id: account.cost_center_id || "",
                         status: account.status || "Pending",
                         credit_amount: "", // Clear in edit mode
                         debit_amount: "", // Clear in edit mode
@@ -155,7 +153,6 @@ const AccountsModal = ({
                         account_number: "",
                         description: "",
                         account_code_id: "",
-                        cost_center_id: "",
                         status: "Pending",
                         credit_amount: "",
                         debit_amount: "",
@@ -171,35 +168,8 @@ const AccountsModal = ({
         loadInitialData();
     }, [isOpen, account, isEdit]);
 
-    const fetchAllCostCenters = async () => {
-        let allCostCenters = [];
-        let page = 1;
-        let lastPage = false;
-
-        try {
-            while (!lastPage) {
-                const response = await axios.get(
-                    `/api/v1/cost-centers?page=${page}`
-                );
-                const { data, meta } = response.data;
-                allCostCenters = [...allCostCenters, ...data];
-                if (meta?.last_page && page >= meta.last_page) {
-                    lastPage = true;
-                } else {
-                    page++;
-                }
-            }
-            setCostCenters(allCostCenters);
-        } catch (error) {
-            console.error("Error fetching all cost centers:", error);
-        }
-    };
-
     const fetchFormData = async () => {
         try {
-            // Fetch all cost centers using pagination
-            await fetchAllCostCenters();
-
             // Fetch account types directly from account_codes table
             const accountCodesResponse = await axios.get(
                 "/api/v1/account-codes"
@@ -263,7 +233,7 @@ const AccountsModal = ({
         const { name, value } = e.target;
 
         // Prevent changes to disabled fields in edit mode
-        if (isEdit && ['name', 'account_number', 'description', 'account_code_id', 'cost_center_id', 'status'].includes(name)) {
+        if (isEdit && ['name', 'account_number', 'description', 'account_code_id', 'status'].includes(name)) {
             return;
         }
 
@@ -382,8 +352,6 @@ const AccountsModal = ({
 
         const validationErrors = {};
         if (!formData.name) validationErrors.name = "Name is required";
-        if (!formData.cost_center_id)
-            validationErrors.cost_center_id = "Cost Center is required";
         if (!formData.account_code_id)
             validationErrors.account_code_id = "Type is required";
         if (!formData.status) validationErrors.status = "Status is required";
@@ -555,7 +523,7 @@ const AccountsModal = ({
                         chart_of_account_id:
                             chartOfAccountResponse.data.data.id.toString(),
                         account_code_id: selectedTypeId.toString(),
-                        cost_center_id: formData.cost_center_id.toString(),
+                        // cost_center_id removed – no longer required
                         department_id: null,
                         status: formData.status,
                         credit_amount: cleanFormData.credit_amount,
@@ -590,16 +558,6 @@ const AccountsModal = ({
     };
 
     if (!isOpen) return null;
-
-    const costCenterOptions = costCenters.map((center) => ({
-        id: center.id,
-        label: center.name,
-    }));
-
-    const statusOptions = [
-        { id: "Approved", label: "Approved" },
-        { id: "Pending", label: "Pending" },
-    ];
 
     return (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black bg-opacity-50">
@@ -676,23 +634,6 @@ const AccountsModal = ({
                         <div className={isEdit ? "cursor-not-allowed" : ""}>
                             <div className={isEdit ? "pointer-events-none" : ""}>
                                 <SelectFloating
-                                    label="Cost Center"
-                                    name="cost_center_id"
-                                    value={formData.cost_center_id}
-                                    onChange={handleChange}
-                                    options={
-                                        isLoading
-                                            ? [{ id: "", label: "Loading..." }]
-                                            : costCenterOptions
-                                    }
-                                    disabled={isLoading || isEdit}
-                                    error={errors.cost_center_id}
-                                />
-                            </div>
-                        </div>
-                        <div className={isEdit ? "cursor-not-allowed" : ""}>
-                            <div className={isEdit ? "pointer-events-none" : ""}>
-                                <SelectFloating
                                     label="Type"
                                     name="account_code_id"
                                     value={formData.account_code_id}
@@ -704,19 +645,6 @@ const AccountsModal = ({
                                     }
                                     disabled={isLoading || isEdit}
                                     error={errors.account_code_id}
-                                />
-                            </div>
-                        </div>
-                        <div className={isEdit ? "cursor-not-allowed" : ""}>
-                            <div className={isEdit ? "pointer-events-none" : ""}>
-                                <SelectFloating
-                                    label="Status"
-                                    name="status"
-                                    value={formData.status}
-                                    onChange={handleChange}
-                                    options={statusOptions}
-                                    error={errors.status}
-                                    disabled={isEdit}
                                 />
                             </div>
                         </div>

@@ -171,19 +171,19 @@ function OrgChartTree({
     const [isExpanded, setIsExpanded] = useState(() => {
         return expandedStates.get(node.id) ?? false;
     });
-
+ 
     const handleToggleExpand = () => {
         const newExpandedState = !isExpanded;
         setIsExpanded(newExpandedState);
         onExpansionChange(node.id, newExpandedState);
     };
-
+ 
     const [allChildren, setAllChildren] = useState(node.children || []);
-
+ 
     // Check if node is secretary
     const isSecretary = node.designation_id === 23 || 
         (node.title && node.title.toLowerCase().includes('secretary'));
-
+ 
     // Get regular children and secretary separately
     let regularChildren = allChildren.filter(child => 
         !(child.designation_id === 23 || 
@@ -193,37 +193,63 @@ function OrgChartTree({
         child.designation_id === 23 || 
         (child.title && child.title.toLowerCase().includes('secretary'))
     );
-
+ 
     // Debug: Log children structure for this node
     if (node && node.id) {
         console.log('[OrgChartTree] node.id:', node.id, {
-            allChildren: allChildren.map(c => c && {id: c.id, title: c.title}),
-            regularChildren: regularChildren.map(c => c && {id: c && c.id, title: c && c.title}),
-            secretaryChild: secretaryChild && {id: secretaryChild.id, title: secretaryChild.title}
+            allChildren: allChildren.map(c => c && ({ id: c.id, title: c.title })),
+            regularChildren: regularChildren.map(c => c && ({ id: c.id, title: c.title })),
+            secretaryChild: secretaryChild && { id: secretaryChild.id, title: secretaryChild.title }
         });
     }
-
+ 
     // Check if parent has a secretary
     const hasSecretaryParent = parent?.children?.some(child => 
         child.designation_id === 23 || 
         (child.title && child.title.toLowerCase().includes('secretary'))
     );
-
+ 
     const handleDelete = (nodeToDelete = node) => {
-        if (parent) {
-            console.log('=== Delete Process Start ===');
-            console.log('Node to delete:', nodeToDelete);
-            
-            // Remove the node from parent's children
-            const index = parent.children.findIndex(child => child.id === nodeToDelete.id);
-            if (index !== -1) {
-                parent.children.splice(index, 1);
-                // Force a complete re-render
-                onUpdate(true);
+        console.log('=== Delete Process Start ===');
+        console.log('Node to delete:', nodeToDelete);
+ 
+        const removeFromChildren = (parentNode) => {
+            if (!parentNode || !Array.isArray(parentNode.children)) {
+                return false;
             }
-            
-            console.log('=== Delete Process End ===');
+            const index = parentNode.children.findIndex(
+                (child) => child && child.id === nodeToDelete.id
+            );
+            if (index !== -1) {
+                parentNode.children.splice(index, 1);
+                return true;
+            }
+            return false;
+        };
+ 
+        let removed = false;
+ 
+        // First try to remove from the direct parent (normal employees)
+        if (parent) {
+            removed = removeFromChildren(parent);
         }
+ 
+        // If not found there (e.g. secretary attached directly to this node),
+        // try to remove from the current node's children collection
+        if (!removed) {
+            removed = removeFromChildren(node);
+            if (removed) {
+                // Keep local children state in sync so secretary disappears immediately
+                setAllChildren([...(node.children || [])]);
+            }
+        }
+ 
+        if (removed) {
+            // Force a complete re-render
+            onUpdate(true);
+        }
+ 
+        console.log('=== Delete Process End ===');
     };
 
     const handleAddPosition = async () => {
