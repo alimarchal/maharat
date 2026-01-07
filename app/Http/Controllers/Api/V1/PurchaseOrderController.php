@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use App\Services\PurchaseOrderBudgetService;
 use App\Models\RequestBudget;
 use App\Services\BudgetValidationService;
+use App\Services\VatBudgetService;
 use App\Models\Quotation;
 use App\Services\ApproverResolver;
 use App\Models\ProcessStep;
@@ -177,7 +178,7 @@ class PurchaseOrderController extends Controller
 
             \Log::info('PurchaseOrder Store - Selected fiscal period ID: ' . $fiscalPeriodId);
 
-            // Calculate amounts - VAT is excluded from budget calculations
+            // Calculate amounts - VAT is excluded from NORMAL budget calculations (handled via separate VAT budget)
             $baseAmount = floatval($validatedData['amount'] ?? 0);
             $vatAmount = floatval($validatedData['vat_amount'] ?? 0);
             $totalAmount = $baseAmount + $vatAmount; // Total for display/accounting
@@ -191,7 +192,7 @@ class PurchaseOrderController extends Controller
                 'note' => 'Budget uses base amount only (VAT excluded)'
             ]);
 
-            // Validate budget availability with base amount only (excluding VAT)
+            // Validate normal (non-VAT) budget availability with base amount only (excluding VAT)
             $budgetValidation = $budgetService->validateBudgetAvailability(
                 $rfq->department_id,
                 $rfq->cost_center_id,
@@ -208,7 +209,7 @@ class PurchaseOrderController extends Controller
             $alternatives = [];
             
             if (!$budgetValidation['valid']) {
-                // Budget validation failed - create reallocation request
+                // Normal budget validation failed - create reallocation request
                 // Sub cost center will be selected during approval process
                 $availableAmount = $budgetValidation['available_amount'] ?? 0;
                 $shortfallAmount = $budgetValidation['shortfall_amount'] ?? $budgetAmount; // Use budget amount (excludes VAT)
@@ -256,7 +257,7 @@ class PurchaseOrderController extends Controller
                 
                 // Note: Reallocation request will be created after PO is created (see below)
             } else {
-                // Normal flow - sufficient budget in original subcost center
+                // Normal flow - sufficient normal budget in original subcost center
                 // THIS HAPPENS WHEN PO REQUEST IS MADE, NOT AFTER APPROVAL
                 $normalBudget = $budgetValidation['budget'];
                 $normalReservedBefore = $normalBudget->reserved_amount;
@@ -320,9 +321,19 @@ class PurchaseOrderController extends Controller
                     'audit_log_id' => $normalAuditLogId
                 ]);
 
-                // Add fiscal period and budget info to purchase order
+                // Add fiscal period and budget info to purchase order (normal budget)
                 $validatedData['fiscal_period_id'] = $fiscalPeriodId;
                 $validatedData['request_budget_id'] = $normalBudget->id;
+            }
+
+            // Before creating purchase order, validate & reserve VAT against yearly VAT budget
+            // NOTE: This does NOT touch the normal department budget, it only uses the special VAT budget (type = 'vat')
+            $vatAuditLogId = null;
+            if ($vatAmount > 0) {
+                $vatBudgetService = new VatBudgetService();
+                // This will throw an exception if no VAT budget or insufficient capacity
+                // Returns the audit log ID so we can link it to the PO after creation
+                $vatAuditLogId = $vatBudgetService->reserveVatForPurchaseOrder($fiscalPeriodId, $vatAmount);
             }
 
             \Log::info('PurchaseOrder Store - Final validated data before creation: ' . json_encode($validatedData));
@@ -359,6 +370,12 @@ class PurchaseOrderController extends Controller
                 if (isset($normalAuditLogId) && $normalAuditLogId) {
                     DB::table('budget_audit_logs')
                         ->where('id', $normalAuditLogId)
+                        ->update(['purchase_order_id' => $purchaseOrder->id]);
+                }
+                // Update VAT audit log with purchase order ID
+                if ($vatAuditLogId) {
+                    DB::table('budget_audit_logs')
+                        ->where('id', $vatAuditLogId)
                         ->update(['purchase_order_id' => $purchaseOrder->id]);
                 }
                 

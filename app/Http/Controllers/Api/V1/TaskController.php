@@ -4824,6 +4824,23 @@ class TaskController extends Controller
                 'new_amount' => $adjustedAmount,
                 'new_vat_amount' => $adjustedTax
             ]);
+
+            // Adjust VAT reservation in yearly VAT budget to reflect new PO VAT amount
+            try {
+                $updatedPurchaseOrder = \App\Models\PurchaseOrder::find($grn->purchase_order_id);
+                if ($updatedPurchaseOrder) {
+                    $vatBudgetService = new \App\Services\VatBudgetService();
+                    $vatBudgetService->adjustVatReservationForPurchaseOrder($updatedPurchaseOrder);
+                }
+            } catch (\Exception $vatException) {
+                Log::error('Failed to adjust VAT reservation after GRN adjustment', [
+                    'grn_id' => $grnId,
+                    'purchase_order_id' => $grn->purchase_order_id,
+                    'error' => $vatException->getMessage(),
+                ]);
+                // Re-throw to fail approval if VAT budget cannot support the adjustment
+                throw $vatException;
+            }
             
             // Update external invoice if exists
             if ($externalInvoice) {

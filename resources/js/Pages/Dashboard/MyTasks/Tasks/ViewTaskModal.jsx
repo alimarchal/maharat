@@ -44,7 +44,7 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                 try {
 
                     const response = await axios.get(
-                        `/api/v1/tasks/${task.id}?include=processStep,process,assignedFromUser,assignedToUser,descriptions,material_request,material_request.items,material_request.items.product,material_request.items.unit,material_request.items.category,material_request.items.urgencyStatus,material_request.requester,material_request.warehouse,material_request.department,material_request.costCenter,rfq,rfq.items,rfq.items.product,rfq.items.unit,rfq.items.category,rfq.items.status,rfq.requester,rfq.warehouse,rfq.department,rfq.costCenter,rfq.subCostCenter,purchase_order,purchase_order.supplier,purchase_order.user,purchase_order.subCostCenter,purchase_order.alternativeSubCostCenter,purchase_order.reallocationRequest,purchase_order.reallocationRequest.updatedDestinationSubCostCenter,purchase_order.reallocationRequest.reallocateToSubCostCenter,payment_order,payment_order.supplier,payment_order.user,payment_order.purchase_order,invoice,invoice.items,invoice.client,invoice.representative,budget,budget.department,budget.costCenter,budget_approval_transaction,request_budget,request_budget.department,request_budget.costCenter,request_budget.fiscalPeriod,request_budget.subCostCenter,request_budget.reallocateToSubCostCenter,request_budget.originalDestinationSubCostCenter,request_budget.updatedDestinationSubCostCenter,request_budget.updatedByUser,request_budget.purchaseOrder,request_budget.sourceBudgetRequest,request_budget.reallocationHistory,grn,grn.user,grn.quotation,grn.purchaseOrder,grn.approvalTransactions,grn.approvalTransactions.assignedToUser`
+                        `/api/v1/tasks/${task.id}?include=processStep,process,assignedFromUser,assignedToUser,descriptions,material_request,material_request.items,material_request.items.product,material_request.items.unit,material_request.items.category,material_request.items.urgencyStatus,material_request.requester,material_request.warehouse,material_request.department,material_request.costCenter,rfq,rfq.items,rfq.items.product,rfq.items.unit,rfq.items.category,rfq.items.status,rfq.requester,rfq.warehouse,rfq.department,rfq.costCenter,rfq.subCostCenter,purchase_order,purchase_order.supplier,purchase_order.user,purchase_order.subCostCenter,purchase_order.alternativeSubCostCenter,purchase_order.reallocationRequest,purchase_order.reallocationRequest.updatedDestinationSubCostCenter,purchase_order.reallocationRequest.reallocateToSubCostCenter,payment_order,payment_order.supplier,payment_order.user,payment_order.purchase_order,invoice,invoice.items,invoice.client,invoice.representative,budget,budget.department,budget.costCenter,budget.requestBudget,budget_approval_transaction,request_budget,request_budget.department,request_budget.costCenter,request_budget.fiscalPeriod,request_budget.subCostCenter,request_budget.reallocateToSubCostCenter,request_budget.originalDestinationSubCostCenter,request_budget.updatedDestinationSubCostCenter,request_budget.updatedByUser,request_budget.purchaseOrder,request_budget.sourceBudgetRequest,request_budget.reallocationHistory,grn,grn.user,grn.quotation,grn.purchaseOrder,grn.approvalTransactions,grn.approvalTransactions.assignedToUser`
                     );
                     
                     let taskData = response.data.data;
@@ -1193,41 +1193,83 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 {currentTask.process.title === "Budget Request Approval" && currentTask.request_budget && (
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
+                                            {/* Department / Cost Center only for normal department budgets */}
+                                            {currentTask.request_budget.type !== 'vat' && (
+                                                <>
+                                                    <div>
+                                                        <span className="text-gray-600">Department:</span>
+                                                        <span className="font-medium ml-2">
+                                                            {task.request_budget.department?.name || "N/A"}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-gray-600">Cost Center:</span>
+                                                        <span className="font-medium ml-2">
+                                                            {task.request_budget.cost_center?.name || "N/A"}
+                                                        </span>
+                                                    </div>
+                                                </>
+                                            )}
+
                                             <div>
-                                                <span className="text-gray-600">Department:</span>
-                                                <span className="font-medium ml-2">{task.request_budget.department?.name || "N/A"}</span>
+                                                <span className="text-gray-600">
+                                                    {currentTask.request_budget.type === 'vat'
+                                                        ? "Requested VAT Budget:"
+                                                        : "Requested Amount:"}
+                                                </span>
+                                                <span className="font-medium ml-2">
+                                                    {task.request_budget.requested_amount || "N/A"}
+                                                </span>
+                                            </div>
+                                            {task.request_budget.approved_amount !== null &&
+                                                task.request_budget.approved_amount !== undefined &&
+                                                task.request_budget.approved_amount !== "" && (
+                                                    <div>
+                                                        <span className="text-gray-600">
+                                                            Approved Amount:
+                                                        </span>
+                                                        <span className="font-medium ml-2">
+                                                            {task.request_budget.approved_amount}
+                                                        </span>
+                                                    </div>
+                                            )}
+                                            <div>
+                                                <span className="text-gray-600">
+                                                    {currentTask.request_budget.type === 'vat'
+                                                        ? "Previous VAT Budget:"
+                                                        : "Previous Year Budget:"}
+                                                </span>
+                                                <span className="font-medium ml-2">
+                                                    {task.request_budget.previous_year_budget_amount || "N/A"}
+                                                </span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Cost Center:</span>
-                                                <span className="font-medium ml-2">{task.request_budget.cost_center?.name || "N/A"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-600">Requested Amount:</span>
-                                                <span className="font-medium ml-2">{task.request_budget.requested_amount || "N/A"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-600">Approved Amount:</span>
-                                                <span className="font-medium ml-2">{task.request_budget.approved_amount || "N/A"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-600">Previous Year Budget:</span>
-                                                <span className="font-medium ml-2">{task.request_budget.previous_year_budget_amount || "N/A"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-600">Revenue Planned:</span>
-                                                <span className="font-medium ml-2">{task.request_budget.revenue_planned || "N/A"}</span>
+                                                <span className="text-gray-600">
+                                                    {currentTask.request_budget.type === 'vat'
+                                                        ? "Reference Revenue Planned:"
+                                                        : "Revenue Planned:"}
+                                                </span>
+                                                <span className="font-medium ml-2">
+                                                    {task.request_budget.revenue_planned || "N/A"}
+                                                </span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Urgency:</span>
-                                                <span className="font-medium ml-2">{task.request_budget.urgency || "N/A"}</span>
+                                                <span className="font-medium ml-2">
+                                                    {task.request_budget.urgency || "N/A"}
+                                                </span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Status:</span>
-                                                <span className="font-medium ml-2">{task.request_budget.status || "N/A"}</span>
+                                                <span className="font-medium ml-2">
+                                                    {task.request_budget.status || "N/A"}
+                                                </span>
                                             </div>
                                             <div>
                                                 <span className="text-gray-600">Fiscal Period:</span>
-                                                <span className="font-medium ml-2">{task.request_budget.fiscal_period?.period_name || "N/A"}</span>
+                                                <span className="font-medium ml-2">
+                                                    {task.request_budget.fiscal_period?.period_name || "N/A"}
+                                                </span>
                                             </div>
                                         </div>
                                         
@@ -1259,7 +1301,11 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                                             alt="PDF"
                                                             className="w-4 h-4"
                                                         />
-                                                        <span>Budget Request Document</span>
+                                                        <span>
+                                                            {currentTask.request_budget.type === 'vat'
+                                                                ? 'VAT Budget Document'
+                                                                : 'Budget Request Document'}
+                                                        </span>
                                                     </button>
                                                 </div>
                                             </div>
@@ -1448,42 +1494,73 @@ const ViewTaskModal = ({ isOpen, onClose, task }) => {
                                 {/* Total Budget Approval Details */}
                                 {currentTask.process.title === "Total Budget Approval" && currentTask.budget && (
                                     <div className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <span className="text-gray-600">Department:</span>
-                                                <span className="font-medium ml-2">{task.budget.department?.name || "N/A"}</span>
+                                        {currentTask.budget.request_budget?.type === 'vat' ? (
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <span className="text-gray-600">Budget Type:</span>
+                                                    <span className="font-medium ml-2">VAT Budget (Yearly)</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-gray-600">Fiscal Period:</span>
+                                                    <span className="font-medium ml-2">
+                                                        {fiscalPeriodName || "Loading..."}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-gray-600">Requested VAT Budget:</span>
+                                                    <span className="font-medium ml-2">
+                                                        {currentTask.budget.request_budget?.requested_amount
+                                                            ? parseFloat(currentTask.budget.request_budget.requested_amount).toLocaleString()
+                                                            : "N/A"}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-gray-600">Approved VAT Budget:</span>
+                                                    <span className="font-medium ml-2">
+                                                        {currentTask.budget.request_budget?.approved_amount
+                                                            ? parseFloat(currentTask.budget.request_budget.approved_amount).toLocaleString()
+                                                            : "N/A"}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <span className="text-gray-600">Cost Center:</span>
-                                                <span className="font-medium ml-2">{task.budget.cost_center?.name || "N/A"}</span>
+                                        ) : (
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <span className="text-gray-600">Department:</span>
+                                                    <span className="font-medium ml-2">{task.budget.department?.name || "N/A"}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-gray-600">Cost Center:</span>
+                                                    <span className="font-medium ml-2">{task.budget.cost_center?.name || "N/A"}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-gray-600">Total Revenue Planned:</span>
+                                                    <span className="font-medium ml-2">{task.budget.total_revenue_planned || "N/A"}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-gray-600">Total Revenue Actual:</span>
+                                                    <span className="font-medium ml-2">{task.budget.total_revenue_actual || "N/A"}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-gray-600">Total Expense Planned:</span>
+                                                    <span className="font-medium ml-2">{task.budget.total_expense_planned || "N/A"}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-gray-600">Total Expense Actual:</span>
+                                                    <span className="font-medium ml-2">{task.budget.total_expense_actual || "N/A"}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-gray-600">Status:</span>
+                                                    <span className="font-medium ml-2">{task.budget.status || "N/A"}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-gray-600">Fiscal Period:</span>
+                                                    <span className="font-medium ml-2">
+                                                        {fiscalPeriodName || "Loading..."}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <span className="text-gray-600">Total Revenue Planned:</span>
-                                                <span className="font-medium ml-2">{task.budget.total_revenue_planned || "N/A"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-600">Total Revenue Actual:</span>
-                                                <span className="font-medium ml-2">{task.budget.total_revenue_actual || "N/A"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-600">Total Expense Planned:</span>
-                                                <span className="font-medium ml-2">{task.budget.total_expense_planned || "N/A"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-600">Total Expense Actual:</span>
-                                                <span className="font-medium ml-2">{task.budget.total_expense_actual || "N/A"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-600">Status:</span>
-                                                <span className="font-medium ml-2">{task.budget.status || "N/A"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-600">Fiscal Period:</span>
-                                                <span className="font-medium ml-2">
-                                                    {fiscalPeriodName || "Loading..."}
-                                                </span>
-                                            </div>
-                                        </div>
+                                        )}
                                         
                                         {/* Budget Items - Note: Budget model doesn't have items, it's a different structure */}
                                         {task.budget.budget_approval_transactions && task.budget.budget_approval_transactions.length > 0 && (

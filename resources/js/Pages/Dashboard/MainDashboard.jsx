@@ -264,6 +264,7 @@ export default function MainDashboard({ roles, permissions }) {
     const [quotationsRfqCount, setQuotationsRfqCount] = useState(0);
     const [purchaseOrdersRfqCount, setPurchaseOrdersRfqCount] = useState(0);
     const [unpaidInvoicesCount, setUnpaidInvoicesCount] = useState(0);
+    const [availablePurchaseOrdersCount, setAvailablePurchaseOrdersCount] = useState(0);
     const [approvedItemsCount, setApprovedItemsCount] = useState(0);
     
     // Finance Center notification counts
@@ -520,22 +521,46 @@ export default function MainDashboard({ roles, permissions }) {
         fetchPurchaseOrdersRfqCount();
     }, []);
 
-    // Fetch unpaid invoices count
+    // Fetch available purchase orders count (for external invoices notification)
+    // This shows how many approved POs are available to create invoices from
     useEffect(() => {
-        const fetchUnpaidInvoicesCount = async () => {
+        const fetchAvailablePurchaseOrdersCount = async () => {
             try {
-                const response = await fetch("/api/v1/external-invoices?filter[status]=Unpaid&per_page=1");
-                const data = await response.json();
+                // Fetch approved purchase orders
+                const poResponse = await fetch("/api/v1/purchase-orders?filter[status]=Approved&sort=-created_at");
+                const poData = await poResponse.json();
                 
-                if (response.ok) {
-                    setUnpaidInvoicesCount(data.meta?.total || 0);
+                if (poResponse.ok && poData.data) {
+                    const allPOs = poData.data;
+                    
+                    // Fetch all external invoices to see which POs are already used
+                    const invoicesResponse = await fetch("/api/v1/external-invoices");
+                    const invoicesData = await invoicesResponse.json();
+                    
+                    if (invoicesResponse.ok && invoicesData.data) {
+                        const usedPOIds = invoicesData.data
+                            .filter((invoice) => invoice.purchase_order_id)
+                            .map((invoice) => String(invoice.purchase_order_id));
+                        
+                        // Count POs that don't have external invoices yet
+                        const availableCount = allPOs.filter((po) => 
+                            !usedPOIds.includes(String(po.id))
+                        ).length;
+                        
+                        setAvailablePurchaseOrdersCount(availableCount);
+                    } else {
+                        // If we can't fetch invoices, all POs are available
+                        setAvailablePurchaseOrdersCount(allPOs.length);
+                    }
+                } else {
+                    setAvailablePurchaseOrdersCount(0);
                 }
             } catch (err) {
-                // Error fetching unpaid invoices count
-                setUnpaidInvoicesCount(0);
+                console.error("Error fetching available purchase orders count:", err);
+                setAvailablePurchaseOrdersCount(0);
             }
         };
-        fetchUnpaidInvoicesCount();
+        fetchAvailablePurchaseOrdersCount();
     }, []);
 
     // Fetch approved items count (same as approvedCount in RequestItemsContext)
@@ -653,7 +678,7 @@ export default function MainDashboard({ roles, permissions }) {
             text: "External Invoices",
             icon: faFileAlt,
             onClick: () => router.visit("/external-invoices"),
-            notificationCount: unpaidInvoicesCount,
+            notificationCount: availablePurchaseOrdersCount || 0,
             requiredPermission: "view_invoices",
         },
     ];
@@ -811,7 +836,7 @@ export default function MainDashboard({ roles, permissions }) {
         if (hasPermission("view_rfqs")) total += pendingRfqRequestsCount;
         if (hasPermission("view_quotations")) total += quotationsRfqCount;
         if (hasPermission("view_purchase_orders")) total += purchaseOrdersRfqCount;
-        if (hasPermission("view_invoices")) total += unpaidInvoicesCount;
+        if (hasPermission("view_invoices")) total += availablePurchaseOrdersCount;
         return total;
     })();
     
@@ -826,10 +851,17 @@ export default function MainDashboard({ roles, permissions }) {
     })();
 
     // Calculate total finance notifications based on user permissions
+    // Sum of all finance dropdown items' notificationCount values
     const totalFinanceNotifications = (() => {
         let total = 0;
-        if (hasPermission("view_maharat_invoices")) total += maharatInvoicesCount;
-        if (hasPermission("view_payment_orders")) total += paymentOrdersCount;
+        
+        // Sum notification counts from all visible finance dropdown items
+        financeDropdownItems.forEach((item) => {
+            if (item.notificationCount) {
+                total += item.notificationCount;
+            }
+        });
+        
         return total;
     })();
 

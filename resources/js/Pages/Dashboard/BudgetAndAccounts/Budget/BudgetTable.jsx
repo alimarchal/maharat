@@ -39,7 +39,7 @@ const BudgetTable = () => {
         setError("");
 
         try {
-            let url = `/api/v1/budgets?include=fiscalPeriod,department,costCenter,creator,updater&page=${currentPage}`;
+            let url = `/api/v1/budgets?include=fiscalPeriod,department,costCenter,creator,updater,requestBudget&page=${currentPage}`;
 
             // If approve_budget_option is disabled, always filter for Active
             const effectiveFilter = hasPermission('approve_budget_option') ? selectedFilter : 'All';
@@ -66,12 +66,22 @@ const BudgetTable = () => {
         }
     };
 
-    // Group budgets by fiscal year and status
+    // Group budgets by fiscal year and status, separating VAT budgets from department budgets
     const groupBudgetsByYear = () => {
         const grouped = {};
+        const vatBudgets = [];
 
         budgets.forEach((budget) => {
-            // Use fiscal_period_id AND status as the key
+            // Check if this is a VAT budget
+            const isVatBudget = budget.request_budget && budget.request_budget.type === 'vat';
+            
+            if (isVatBudget) {
+                // VAT budgets are separate - don't group them with department budgets
+                vatBudgets.push(budget);
+                return;
+            }
+
+            // For department budgets, group by fiscal_period_id AND status
             const fiscalPeriodId = budget.fiscal_period_id || budget.fiscal_period?.id;
             const status = budget.status || "Unknown";
             const key = `${fiscalPeriodId}_${status}`;
@@ -91,10 +101,10 @@ const BudgetTable = () => {
                 };
             }
 
-            // Add ALL budgets for this fiscal period and status combination
+            // Add department budgets for this fiscal period and status combination
             grouped[key].budgets.push(budget);
             
-            // Sum up the totals from all budgets
+            // Sum up the totals from all department budgets
             grouped[key].totalRevenuePlanned += parseFloat(
                 budget.total_revenue_planned || 0
             );
@@ -109,7 +119,31 @@ const BudgetTable = () => {
             );
         });
 
-        return Object.values(grouped);
+        // Convert grouped object to array
+        const departmentBudgetGroups = Object.values(grouped);
+
+        // Add VAT budgets as separate entries
+        vatBudgets.forEach((vatBudget) => {
+            const fiscalPeriodId = vatBudget.fiscal_period_id || vatBudget.fiscal_period?.id;
+            const status = vatBudget.status || "Unknown";
+            const key = `vat_${fiscalPeriodId}_${status}`;
+            
+            const fiscalPeriod = vatBudget.fiscal_period?.period_name || `Fiscal Period ${fiscalPeriodId}`;
+            
+            departmentBudgetGroups.push({
+                fiscalPeriodId,
+                fiscalPeriod,
+                status,
+                budgets: [vatBudget],
+                isVatBudget: true,
+                totalRevenuePlanned: parseFloat(vatBudget.total_revenue_planned || 0),
+                totalRevenueActual: parseFloat(vatBudget.total_revenue_actual || 0),
+                totalExpensePlanned: parseFloat(vatBudget.total_expense_planned || 0),
+                totalExpenseActual: parseFloat(vatBudget.total_expense_actual || 0),
+            });
+        });
+
+        return departmentBudgetGroups;
     };
 
     // const toggleYearExpansion = (year) => {
@@ -287,9 +321,9 @@ const BudgetTable = () => {
                             </td>
                         </tr>
                     ) : groupedBudgets.length > 0 ? (
-                        groupedBudgets.map((yearGroup) => (
+                        groupedBudgets.map((yearGroup, index) => (
                             <tr
-                                key={yearGroup.fiscalPeriodId}
+                                key={yearGroup.isVatBudget ? `vat_${yearGroup.fiscalPeriodId}_${yearGroup.status}` : `${yearGroup.fiscalPeriodId}_${yearGroup.status}`}
                                 className="bg-transparent"
                             >
                                 <td className="py-3 px-4">
@@ -297,13 +331,28 @@ const BudgetTable = () => {
                                         <span className="font-semibold">
                                             {yearGroup.fiscalPeriod}
                                         </span>
-                                        <span className="text-sm text-gray-500">
-                                            ({yearGroup.budgets.length}{" "}
-                                            {yearGroup.budgets.length === 1
-                                                ? "Department"
-                                                : "Departments"}
-                                            )
-                                        </span>
+                                        {(() => {
+                                            // If this is a VAT budget group, show VAT Budget label
+                                            if (yearGroup.isVatBudget) {
+                                                return (
+                                                    <span className="text-sm text-gray-500">
+                                                        VAT Budget
+                                                    </span>
+                                                );
+                                            }
+
+                                            // For department budgets, show department count
+                                            const departmentCount = yearGroup.budgets.length;
+                                            return (
+                                                <span className="text-sm text-gray-500">
+                                                    ({departmentCount}{" "}
+                                                    {departmentCount === 1
+                                                        ? "Department"
+                                                        : "Departments"}
+                                                    )
+                                                </span>
+                                            );
+                                        })()}
                                     </div>
                                 </td>
                                 <td className="py-3 px-4">

@@ -76,56 +76,162 @@ const BudgetTransactionDetails = () => {
         );
     }
 
+    const isVatBudget = budgetInfo?.type === 'vat';
+
     return (
         <div className="w-full">
             <div className="mb-6">
                 <h2 className="text-3xl font-bold text-[#2C323C] mb-4">
-                    Budget Transaction Details
+                    {isVatBudget ? 'VAT Budget Transaction Details' : 'Budget Transaction Details'}
                 </h2>
                 {budgetInfo && (
                     <div className="p-4 mb-6">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div>
-                                <p className="text-sm text-gray-600">Cost Center</p>
-                                <p className="font-semibold">{budgetInfo.cost_center?.name || 'N/A'}</p>
+                        {isVatBudget ? (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Budget Type
+                                    </p>
+                                    <p className="font-semibold">
+                                        VAT Budget (Yearly)
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Fiscal Period
+                                    </p>
+                                    <p className="font-semibold">
+                                        {budgetInfo.fiscal_period?.fiscal_year ||
+                                            'N/A'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Approved VAT Budget
+                                    </p>
+                                    <p className="font-semibold text-green-600">
+                                        {parseFloat(
+                                            budgetInfo.approved_amount || 0
+                                        ).toLocaleString()}{' '}
+                                        SAR
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Balance Amount
+                                    </p>
+                                    <p className="font-semibold text-orange-600">
+                                        {parseFloat(
+                                            budgetInfo.balance_amount || 0
+                                        ).toLocaleString()}{' '}
+                                        SAR
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Reserved Amount
+                                    </p>
+                                    <p className="font-semibold text-blue-600">
+                                        {parseFloat(
+                                            budgetInfo.reserved_amount || 0
+                                        ).toLocaleString()}{' '}
+                                        SAR
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Consumed Amount
+                                    </p>
+                                    <p className="font-semibold text-red-600">
+                                        {parseFloat(
+                                            budgetInfo.consumed_amount || 0
+                                        ).toLocaleString()}{' '}
+                                        SAR
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Sub Cost Center</p>
-                                <p className="font-semibold">{budgetInfo.sub_cost_center_details?.name || 'N/A'}</p>
+                        ) : (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Cost Center
+                                    </p>
+                                    <p className="font-semibold">
+                                        {budgetInfo.cost_center?.name || 'N/A'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Sub Cost Center
+                                    </p>
+                                    <p className="font-semibold">
+                                        {budgetInfo.sub_cost_center_details
+                                            ?.name || 'N/A'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Department
+                                    </p>
+                                    <p className="font-semibold">
+                                        {budgetInfo.department?.name || 'N/A'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Fiscal Period
+                                    </p>
+                                    <p className="font-semibold">
+                                        {budgetInfo.fiscal_period?.fiscal_year ||
+                                            'N/A'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Approved Amount
+                                    </p>
+                                    <p className="font-semibold text-green-600">
+                                        {parseFloat(
+                                            budgetInfo.approved_amount || 0
+                                        ).toLocaleString()}{' '}
+                                        SAR
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Reserved Amount
+                                    </p>
+                                    <p className="font-semibold text-blue-600">
+                                        {parseFloat(
+                                            budgetInfo.reserved_amount || 0
+                                        ).toLocaleString()}{' '}
+                                        SAR
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Consumed Amount
+                                    </p>
+                                    <p className="font-semibold text-red-600">
+                                        {parseFloat(
+                                            budgetInfo.consumed_amount || 0
+                                        ).toLocaleString()}{' '}
+                                        SAR
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Balance Amount
+                                    </p>
+                                    <p className="font-semibold text-orange-600">
+                                        {parseFloat(
+                                            budgetInfo.balance_amount || 0
+                                        ).toLocaleString()}{' '}
+                                        SAR
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Department</p>
-                                <p className="font-semibold">{budgetInfo.department?.name || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Fiscal Period</p>
-                                <p className="font-semibold">{budgetInfo.fiscal_period?.fiscal_year || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Approved Amount</p>
-                                <p className="font-semibold text-green-600">
-                                    {parseFloat(budgetInfo.approved_amount || 0).toLocaleString()} SAR
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Reserved Amount</p>
-                                <p className="font-semibold text-blue-600">
-                                    {parseFloat(budgetInfo.reserved_amount || 0).toLocaleString()} SAR
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Consumed Amount</p>
-                                <p className="font-semibold text-red-600">
-                                    {parseFloat(budgetInfo.consumed_amount || 0).toLocaleString()} SAR
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Balance Amount</p>
-                                <p className="font-semibold text-orange-600">
-                                    {parseFloat(budgetInfo.balance_amount || 0).toLocaleString()} SAR
-                                </p>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 )}
             </div>

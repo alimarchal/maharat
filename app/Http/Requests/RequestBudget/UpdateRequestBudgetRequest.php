@@ -43,7 +43,8 @@ class UpdateRequestBudgetRequest extends FormRequest
             'original_name' => 'nullable|string',
             'reason_for_increase' => 'nullable|string|max:1000',
             'status' => $isReallocation ? 'nullable|in:Draft,Pending,Approved,Rejected' : 'sometimes|in:Draft,Pending,Approved,Rejected',
-            'type' => 'sometimes|in:budget_request,reallocation',
+            // Allow VAT type on update as well
+            'type' => 'sometimes|in:budget_request,reallocation,vat',
             'reallocate_amount' => $isReallocation ? 'sometimes|numeric|min:0' : 'nullable|numeric|min:0',
             'reallocate_to_sub_cost_center' => 'nullable|exists:cost_centers,id',
         ];

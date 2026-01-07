@@ -21,10 +21,13 @@ class StoreRequestBudgetRequest extends FormRequest
      */
     public function rules(): array
     {
+        $type = $this->input('type');
+
+        // Base rules
         $rules = [
             'fiscal_period_id' => 'required|exists:fiscal_periods,id',
-            'department_id' => 'required|exists:departments,id',
-            'cost_center_id' => 'required|exists:cost_centers,id',
+            'department_id' => 'nullable|exists:departments,id',
+            'cost_center_id' => 'nullable|exists:cost_centers,id',
             'sub_cost_center' => 'nullable|exists:cost_centers,id',
             'previous_year_revenue' => 'nullable|numeric|min:0',
             'current_year_revenue' => 'nullable|numeric|min:0',
@@ -39,7 +42,7 @@ class StoreRequestBudgetRequest extends FormRequest
             'reallocate_amount' => 'nullable|numeric|min:0',
             'reallocate_to_sub_cost_center' => 'nullable|exists:cost_centers,id',
             'destination_old_balance' => 'nullable|numeric|min:0',
-            'type' => 'nullable|in:budget_request,reallocation',
+            'type' => 'nullable|in:budget_request,reallocation,vat',
             'urgency' => 'nullable|in:Low,Medium,High',
             'attachment_path' => 'nullable|string',
             'original_name' => 'nullable|string',
@@ -47,16 +50,32 @@ class StoreRequestBudgetRequest extends FormRequest
             'status' => 'required|in:Draft,Pending,Approved,Rejected',
         ];
 
-        // For regular budget requests, make certain fields required
-        if ($this->input('type') !== 'reallocation') {
+        // For regular budget requests (department budgets), make certain fields required
+        if ($type === null || $type === 'budget_request') {
+            $rules['department_id'] = 'required|exists:departments,id';
+            $rules['cost_center_id'] = 'required|exists:cost_centers,id';
             $rules['previous_year_budget_amount'] = 'required|numeric|min:0';
             $rules['requested_amount'] = 'required|numeric|min:0';
             $rules['revenue_planned'] = 'required|numeric|min:0';
             $rules['urgency'] = 'required|in:Low,Medium,High';
-        } else {
+        } elseif ($type === 'reallocation') {
             // For reallocations, make reallocation-specific fields required
             $rules['reallocate_amount'] = 'required|numeric|min:1';
             $rules['reallocate_to_sub_cost_center'] = 'required|exists:cost_centers,id';
+            // Department and cost center are still required for reallocations
+            $rules['department_id'] = 'required|exists:departments,id';
+            $rules['cost_center_id'] = 'required|exists:cost_centers,id';
+        } elseif ($type === 'vat') {
+            // VAT budget: one main VAT budget per fiscal year (period), no department/cost center/sub cost center
+            // Keep the same financial fields as normal budget requests
+            $rules['previous_year_budget_amount'] = 'required|numeric|min:0';
+            $rules['requested_amount'] = 'required|numeric|min:0';
+            $rules['revenue_planned'] = 'required|numeric|min:0';
+            $rules['urgency'] = 'required|in:Low,Medium,High';
+            // Enforce that hierarchy fields are NOT set (they must be null)
+            $rules['department_id'] = 'nullable';
+            $rules['cost_center_id'] = 'nullable';
+            $rules['sub_cost_center'] = 'nullable';
         }
 
         return $rules;
@@ -68,9 +87,31 @@ class StoreRequestBudgetRequest extends FormRequest
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
-            // Skip uniqueness validation for reallocations
-            if ($this->input('type') !== 'reallocation') {
+            $type = $this->input('type');
+
+            // Skip hierarchical uniqueness validation for reallocations and VAT budgets
+            if ($type !== 'reallocation' && $type !== 'vat') {
                 $this->validateHierarchicalUniqueness($validator);
+            }
+
+            // Additional validation for VAT budgets:
+            // - Enforce one active VAT budget per fiscal period (year) unless existing is Rejected
+            if ($type === 'vat') {
+                $fiscalPeriodId = $this->fiscal_period_id;
+
+                if ($fiscalPeriodId) {
+                    $existingVatBudget = \App\Models\RequestBudget::where('fiscal_period_id', $fiscalPeriodId)
+                        ->where('type', 'vat')
+                        ->whereIn('status', ['Draft', 'Pending', 'Approved'])
+                        ->first();
+
+                    if ($existingVatBudget) {
+                        $validator->errors()->add(
+                            'fiscal_period_id',
+                            'A VAT budget already exists for this fiscal year and is not rejected. You can only create another VAT budget for this year if the existing one is rejected.'
+                        );
+                    }
+                }
             }
         });
     }

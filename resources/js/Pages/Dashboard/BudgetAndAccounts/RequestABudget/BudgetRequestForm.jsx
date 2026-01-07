@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLink } from "@fortawesome/free-solid-svg-icons";
 import SelectFloating from "../../../../Components/SelectFloating";
 import InputFloating from "../../../../Components/InputFloating";
-import { router, usePage } from "@inertiajs/react";
+import { Link, router, usePage } from "@inertiajs/react";
 import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 
 const BudgetRequestForm = () => {
@@ -595,10 +595,12 @@ const BudgetRequestForm = () => {
 
     return (
         <div className="w-full">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div>
                     <h2 className="text-3xl font-bold text-[#2C323C]">
-                        {isEditMode ? "Edit Department Budget Request" : "Department Budget Request"}
+                        {isEditMode
+                            ? "Edit Department Budget Request"
+                            : "Department Budget Request"}
                     </h2>
                     <p className="text-[#7D8086] text-lg">
                         {isEditMode
@@ -606,37 +608,71 @@ const BudgetRequestForm = () => {
                             : "Request by department head for the budget"}
                     </p>
                 </div>
-                <div className="w-full lg:w-1/3">
-                    {isEditMode ? (
-                        <InputFloating
-                            label="Budget"
-                            name="fiscal_period_id"
-                            value={
-                                fiscalYears.length > 0 && formData.fiscal_period_id
-                                    ? (() => {
-                                        const year = fiscalYears.find((year) => year.id.toString() === formData.fiscal_period_id.toString());
-                                        return year ? `${year.budget_name} (${year.period_name})` : 'Loading...';
-                                    })()
-                                    : formData.fiscal_period_id ? 'Loading...' : ''
-                            }
-                            onChange={() => {}}
-                            onKeyDown={(e) => e.preventDefault()}
-                            disabled
-                            readOnly
-                        />
-                    ) : (
-                        <SelectFloating
-                            label="Budget"
-                            name="fiscal_period_id"
-                            value={formData.fiscal_period_id}
-                            onChange={handleChange}
-                            options={fiscalYears.map((year) => ({
-                                id: year.id,
-                                label: `${year.budget_name} (${year.period_name})`,
-                            }))}
-                        />
-                    )}
-                    <ErrorMessage error={errors.fiscal_period_id} />
+                <div className="w-full lg:w-1/2">
+                    <div className="flex flex-col gap-2">
+                        {!isEditMode && (
+                            <div className="flex justify-end">
+                                <Link
+                                    href="/request-budgets/vat/create"
+                                    className="bg-[#009FDC] text-white px-5 py-3 rounded-full text-base font-medium whitespace-nowrap shadow-sm hover:bg-[#007CB8] transition"
+                                >
+                                    Create VAT Budget
+                                </Link>
+                            </div>
+                        )}
+                        <div className="flex items-center justify-end gap-3">
+                            {!isEditMode && (
+                                // Keep button and dropdown on the same line; button comes before dropdown visually
+                                <span className="hidden" />
+                            )}
+                            <div className="w-full lg:w-2/3">
+                                {isEditMode ? (
+                                    <InputFloating
+                                        label="Budget"
+                                        name="fiscal_period_id"
+                                        value={
+                                            fiscalYears.length > 0 &&
+                                            formData.fiscal_period_id
+                                                ? (() => {
+                                                      const year =
+                                                          fiscalYears.find(
+                                                              (year) =>
+                                                                  year.id.toString() ===
+                                                                  formData.fiscal_period_id.toString()
+                                                          );
+                                                      return year
+                                                          ? `${year.budget_name} (${year.period_name})`
+                                                          : "Loading...";
+                                                  })()
+                                                : formData.fiscal_period_id
+                                                ? "Loading..."
+                                                : ""
+                                        }
+                                        onChange={() => {}}
+                                        onKeyDown={(e) =>
+                                            e.preventDefault()
+                                        }
+                                        disabled
+                                        readOnly
+                                    />
+                                ) : (
+                                    <SelectFloating
+                                        label="Budget"
+                                        name="fiscal_period_id"
+                                        value={formData.fiscal_period_id}
+                                        onChange={handleChange}
+                                        options={fiscalYears.map((year) => ({
+                                            id: year.id,
+                                            label: `${year.budget_name} (${year.period_name})`,
+                                        }))}
+                                    />
+                                )}
+                                <ErrorMessage
+                                    error={errors.fiscal_period_id}
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

@@ -39,6 +39,7 @@ import EditFiscalPeriod from "./Dashboard/BudgetAndAccounts/Budget/EditFiscalPer
 import ViewBalanceSheet from "./Dashboard/BudgetAndAccounts/BalanceSheet/ViewBalanceSheet";
 import BudgetRequestForm from "./Dashboard/BudgetAndAccounts/RequestABudget/BudgetRequestForm";
 import ReallocateBudgetForm from "./Dashboard/BudgetAndAccounts/RequestABudget/ReallocateBudgetForm";
+import VatBudgetRequestForm from "./Dashboard/BudgetAndAccounts/RequestABudget/VatBudgetRequestForm";
 import MaharatInvoicesTable from "./Dashboard/Finance/MaharatInvoices/MaharatInvoicesTable";
 import ApproveBudgetForm from "./Dashboard/MyTasks/ApproveBudgetRequest/ApproveBudgetForm";
 import SubCostCenterTable from "./Dashboard/BudgetAndAccounts/SubCostCenter/SubCostCenterTable";
@@ -236,6 +237,8 @@ export default function Dashboard({ auth, page }) {
             return <BudgetRequestForm />;
         if (page === "BudgetAndAccounts/RequestABudget/ReallocateBudgetForm")
             return <ReallocateBudgetForm />;
+        if (page === "BudgetAndAccounts/RequestABudget/VatBudgetRequestForm")
+            return <VatBudgetRequestForm />;
         if (page === "Warehouse/ReceivedMaterialRequest/ReceivedMRsTable")
             return <ReceivedMRsTable />;
         if (page === "Configuration/Users/Users") return <Users />;

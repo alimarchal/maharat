@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Response;
+use App\Services\VatBudgetService;
 
 class AccountController extends Controller
 {
@@ -314,7 +315,7 @@ class AccountController extends Controller
         }
         $paymentOrder->save();
 
-        // Update budget consumption based on payment amount
+        // Update budget consumption based on payment amount (normal budget)
         \Log::info('=== CALLING UPDATE BUDGET CONSUMPTION ===', [
             'payment_order_id' => $paymentOrder->id,
             'debit_amount' => $debitAmount,
@@ -331,6 +332,27 @@ class AccountController extends Controller
             'external_invoice_id' => $externalInvoice->id,
             'payment_order_id' => $paymentOrder->id
         ]);
+        // Consume VAT from yearly VAT budget based on VAT portion of this payment
+        try {
+            $purchaseOrder = \App\Models\PurchaseOrder::find($purchaseOrderId);
+            if ($purchaseOrder && $taxPaid > 0) {
+                $vatBudgetService = new VatBudgetService();
+                $vatBudgetService->consumeVatOnPayment($purchaseOrder, $taxPaid);
+            }
+        } catch (\Exception $vatEx) {
+            \Log::error('Failed to consume VAT from VAT budget on payment (API AccountController)', [
+                'payment_order_id' => $paymentOrder->id,
+                'purchase_order_id' => $purchaseOrderId,
+                'tax_paid' => $taxPaid,
+                'error' => $vatEx->getMessage(),
+            ]);
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to update VAT budget: ' . $vatEx->getMessage(),
+                'error' => $vatEx->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
         DB::commit();
         return response()->json([
             'message' => 'Liabilities account updated successfully. Debit amount: ' . $debitAmount . ', Tax: ' . $taxPaid . ', Net: ' . $netPaid,
@@ -630,7 +652,7 @@ class AccountController extends Controller
             // Record the transaction flow - this creates a new record in the transactions_flow table
             // IMPORTANT: This must happen within the DB transaction so it gets committed together
             try {
-                $transactionFlow = TransactionFlowService::recordTransactionFlow(
+            $transactionFlow = TransactionFlowService::recordTransactionFlow(
                     8, // account_id
                     'credit',
                     $creditAmount,
@@ -701,6 +723,26 @@ class AccountController extends Controller
         }
         
         DB::commit();
+
+        // Reduce consumed VAT in yearly VAT budget (credit back VAT capacity)
+        try {
+            $purchaseOrder = \App\Models\PurchaseOrder::find($paymentOrder->purchase_order_id);
+            if ($purchaseOrder && $creditAmount > 0) {
+                $vatBudgetService = new VatBudgetService();
+                $vatBudgetService->refundVatOnCredit($purchaseOrder, $creditAmount);
+            }
+        } catch (\Exception $vatEx) {
+            \Log::error('Failed to refund VAT in VAT budget on Account 8 credit (API AccountController)', [
+                'payment_order_id' => $paymentOrder->id,
+                'purchase_order_id' => $paymentOrder->purchase_order_id,
+                'vat_credit' => $creditAmount,
+                'error' => $vatEx->getMessage(),
+            ]);
+            return response()->json([
+                'message' => 'Failed to update VAT budget: ' . $vatEx->getMessage(),
+                'error' => $vatEx->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
 
         // Verify transaction flow was actually saved to database
         // Use case-insensitive and trimmed comparison like in the calculation

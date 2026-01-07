@@ -20,6 +20,7 @@ const ViewBudget = () => {
     const [approvalError, setApprovalError] = useState("");
     const [approvalSent, setApprovalSent] = useState(false);
     const [fiscalPeriodId, setFiscalPeriodId] = useState(null);
+    const [isVatBudgetView, setIsVatBudgetView] = useState(false);
 
     useEffect(() => {
         fetchBudget();
@@ -31,24 +32,48 @@ const ViewBudget = () => {
 
         try {
             const res = await axios.get(
-                `/api/v1/budgets/${budgetId}?include=fiscalPeriod,department,costCenter,subCostCenter,creator,updater`
+                `/api/v1/budgets/${budgetId}?include=fiscalPeriod,department,costCenter,subCostCenter,creator,updater,requestBudget`
             );
-            const currentFiscalPeriodId = res.data?.data?.fiscal_period_id;
-            const currentBudgetStatus = res.data?.data?.status;
+            const primaryBudget = res.data?.data;
+            const currentFiscalPeriodId = primaryBudget?.fiscal_period_id;
+            const currentBudgetStatus = primaryBudget?.status;
+            const isVat = primaryBudget?.request_budget?.type === "vat";
+
             setFiscalPeriodId(currentFiscalPeriodId);
+            setIsVatBudgetView(!!isVat);
 
             const response = await axios.get(
                 `/api/v1/budgets?include=fiscalPeriod,department,costCenter,subCostCenter,creator,requestBudget,budgetApprovalTransactions`
             );
             if (response.data && response.data.data) {
-                const filteredBudgets = response.data.data.filter(
-                    (budget) => budget.fiscal_period_id === currentFiscalPeriodId && budget.status === currentBudgetStatus
+                let filteredBudgets = response.data.data.filter(
+                    (budget) =>
+                        budget.fiscal_period_id === currentFiscalPeriodId &&
+                        budget.status === currentBudgetStatus
                 );
+
+                // Separate VAT budgets from department budgets based on the budget you clicked
+                if (isVat) {
+                    filteredBudgets = filteredBudgets.filter(
+                        (budget) =>
+                            budget.request_budget &&
+                            budget.request_budget.type === "vat"
+                    );
+                } else {
+                    filteredBudgets = filteredBudgets.filter(
+                        (budget) =>
+                            !budget.request_budget ||
+                            budget.request_budget.type !== "vat"
+                    );
+                }
+
                 setBudgets(filteredBudgets.length > 0 ? filteredBudgets : []);
                 
                 // Check if any budget in this fiscal period has approval transactions
-                const hasApprovalTransactions = filteredBudgets.some(budget => 
-                    budget.budget_approval_transactions && budget.budget_approval_transactions.length > 0
+                const hasApprovalTransactions = filteredBudgets.some(
+                    (budget) =>
+                        budget.budget_approval_transactions &&
+                        budget.budget_approval_transactions.length > 0
                 );
                 setApprovalSent(hasApprovalTransactions);
             } else {
@@ -147,26 +172,34 @@ const ViewBudget = () => {
         }
     };
 
-    const totalRequested = budgets?.reduce(
-        (sum, budget) => sum + (parseFloat(budget.total_expense_planned) || 0),
-        0
-    );
+    const isVatBudget = isVatBudgetView;
 
-    const totalApproved = budgets?.reduce(
-        (sum, budget) =>
-            sum + (parseFloat(budget.request_budget?.approved_amount) || 0),
-        0
-    );
+    const totalRequested = budgets?.reduce((sum, budget) => {
+        if (isVatBudget) {
+            return sum + (parseFloat(budget.request_budget?.requested_amount) || 0);
+        }
+        return sum + (parseFloat(budget.total_expense_planned) || 0);
+    }, 0);
 
-    const totalBalance = budgets?.reduce(
-        (sum, budget) => sum + (parseFloat(budget.request_budget?.balance_amount) || 0),
-        0
-    );
+    const totalApproved = budgets?.reduce((sum, budget) => {
+        return (
+            sum +
+            (parseFloat(budget.request_budget?.approved_amount) || 0)
+        );
+    }, 0);
+
+    const totalBalance = budgets?.reduce((sum, budget) => {
+        return (
+            sum +
+            (parseFloat(budget.request_budget?.balance_amount) || 0)
+        );
+    }, 0);
 
     return (
         <div className="w-full">
             <h2 className="text-3xl font-bold text-[#2C323C] mb-6">
-                Budget {budgets[0]?.fiscal_period?.fiscal_year}
+                {isVatBudget ? "VAT Budget" : "Budget"}{" "}
+                {budgets[0]?.fiscal_period?.fiscal_year}
             </h2>
 
             {/* Show approval error if any */}
@@ -179,16 +212,39 @@ const ViewBudget = () => {
             <table className="w-full border-collapse">
                 <thead className="bg-[#C7E7DE] text-[#2C323C] text-center text-xl font-medium">
                     <tr>
-                        <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
-                            Cost Centers
-                        </th>
-                        <th className="py-3 px-4">Sub Cost Centers</th>
-                        <th className="py-3 px-4">Department</th>
-                        <th className="py-3 px-4">Amount Requested</th>
-                        <th className="py-3 px-4">Amount Approved</th>
-                        <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
-                            Balance Amount
-                        </th>
+                        {isVatBudget ? (
+                            <>
+                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
+                                    Budget Type
+                                </th>
+                                <th className="py-3 px-4">Reserved Amount</th>
+                                <th className="py-3 px-4">Consumed Amount</th>
+                                <th className="py-3 px-4">
+                                    Requested VAT Budget
+                                </th>
+                                <th className="py-3 px-4">
+                                    Approved VAT Budget
+                                </th>
+                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                                    Balance Amount
+                                </th>
+                            </>
+                        ) : (
+                            <>
+                                <th className="py-3 px-4 rounded-tl-2xl rounded-bl-2xl">
+                                    Cost Centers
+                                </th>
+                                <th className="py-3 px-4">
+                                    Sub Cost Centers
+                                </th>
+                                <th className="py-3 px-4">Department</th>
+                                <th className="py-3 px-4">Amount Requested</th>
+                                <th className="py-3 px-4">Amount Approved</th>
+                                <th className="py-3 px-4 rounded-tr-2xl rounded-br-2xl">
+                                    Balance Amount
+                                </th>
+                            </>
+                        )}
                     </tr>
                 </thead>
                 <tbody className="text-[#2C323C] text-center text-base font-medium divide-y divide-[#D7D8D9]">
@@ -207,57 +263,117 @@ const ViewBudget = () => {
                                 {error}
                             </td>
                         </tr>
-                    ) : budgets.length > 0 ? (
-                        budgets.map((budget) => {
-                            const requestBudgetId = budget.request_budget?.id;
+                        ) : budgets.length > 0 ? (
+                        isVatBudget ? (
+                            (() => {
+                                const vatRequest =
+                                    budgets[0].request_budget || {};
+                                const requestBudgetId = vatRequest.id;
+                                return (
+                                    <tr key={budgets[0].id}>
+                                        <td className="py-3 px-4">
+                                            VAT Budget (Yearly)
+                                        </td>
+                                        <td className="py-3 px-4 text-blue-500">
+                                            {parseFloat(
+                                                vatRequest.reserved_amount || 0
+                                            ).toLocaleString()}
+                                        </td>
+                                        <td className="py-3 px-4 text-red-500">
+                                            {parseFloat(
+                                                vatRequest.consumed_amount || 0
+                                            ).toLocaleString()}
+                                        </td>
+                                        <td className="py-3 px-4 text-blue-500">
+                                            {parseFloat(
+                                                vatRequest.requested_amount ||
+                                                    0
+                                            ).toLocaleString()}
+                                        </td>
+                                        <td className="py-3 px-4 text-green-500">
+                                            {parseFloat(
+                                                vatRequest.approved_amount || 0
+                                            ).toLocaleString()}
+                                        </td>
+                                        <td className="py-3 px-4 text-orange-500">
+                                            <div className="flex items-center justify-between">
+                                                <span>
+                                                    {parseFloat(
+                                                        vatRequest.balance_amount ||
+                                                            0
+                                                    ).toLocaleString()}
+                                                </span>
+                                                {requestBudgetId && (
+                                                    <Link
+                                                        href={`/budget/transactions/${requestBudgetId}`}
+                                                        className="text-[#009FDC] hover:text-[#007CB8] ml-2 transition-colors"
+                                                        title="View VAT transaction details"
+                                                    >
+                                                        <FontAwesomeIcon
+                                                            icon={faChevronRight}
+                                                            className="w-4 h-4"
+                                                        />
+                                                    </Link>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })()
+                        ) : (
+                            budgets.map((budget) => {
+                                const requestBudgetId =
+                                    budget.request_budget?.id;
 
-                            return (
-                                <tr key={budget.id}>
-                                    <td className="py-3 px-4">
-                                        {budget.cost_center?.name}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {budget.sub_cost_center?.name}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        {budget.department?.name}
-                                    </td>
-                                    <td className="py-3 px-4 text-blue-500">
-                                        {parseFloat(
-                                            budget.total_expense_planned
-                                        ).toLocaleString()}
-                                    </td>
-                                    <td className="py-3 px-4 text-green-500">
-                                        {parseFloat(
-                                            budget.request_budget
-                                                ?.approved_amount || 0
-                                        ).toLocaleString()}
-                                    </td>
-                                    <td className="py-3 px-4 text-red-500">
-                                        <div className="flex items-center justify-between">
-                                            <span>
-                                                {parseFloat(
-                                                    budget.request_budget
-                                                        ?.balance_amount || 0
-                                                ).toLocaleString()}
-                                            </span>
-                                            {requestBudgetId && (
-                                                <Link
-                                                    href={`/budget/transactions/${requestBudgetId}`}
-                                                    className="text-[#009FDC] hover:text-[#007CB8] ml-2 transition-colors"
-                                                    title="View transaction details"
-                                                >
-                                                    <FontAwesomeIcon
-                                                        icon={faChevronRight}
-                                                        className="w-4 h-4"
-                                                    />
-                                                </Link>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            );
-                        })
+                                return (
+                                    <tr key={budget.id}>
+                                        <td className="py-3 px-4">
+                                            {budget.cost_center?.name}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            {budget.sub_cost_center?.name}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            {budget.department?.name}
+                                        </td>
+                                        <td className="py-3 px-4 text-blue-500">
+                                            {parseFloat(
+                                                budget.total_expense_planned
+                                            ).toLocaleString()}
+                                        </td>
+                                        <td className="py-3 px-4 text-green-500">
+                                            {parseFloat(
+                                                budget.request_budget
+                                                    ?.approved_amount || 0
+                                            ).toLocaleString()}
+                                        </td>
+                                        <td className="py-3 px-4 text-red-500">
+                                            <div className="flex items-center justify-between">
+                                                <span>
+                                                    {parseFloat(
+                                                        budget.request_budget
+                                                            ?.balance_amount ||
+                                                            0
+                                                    ).toLocaleString()}
+                                                </span>
+                                                {requestBudgetId && (
+                                                    <Link
+                                                        href={`/budget/transactions/${requestBudgetId}`}
+                                                        className="text-[#009FDC] hover:text-[#007CB8] ml-2 transition-colors"
+                                                        title="View transaction details"
+                                                    >
+                                                        <FontAwesomeIcon
+                                                            icon={faChevronRight}
+                                                            className="w-4 h-4"
+                                                        />
+                                                    </Link>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })
+                        )
                     ) : (
                         <tr>
                             <td colSpan="6" className="py-4">

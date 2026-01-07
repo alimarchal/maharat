@@ -31,13 +31,15 @@ const RequestBudgetTable = () => {
                     url += `&filter[status]=${selectedFilter}`;
                 }
 
-                // Exclude reallocation type if user doesn't have permission to view reallocation
+                const response = await axios.get(url);
+                let data = response.data.data || [];
+
+                // Exclude reallocation rows on the frontend if user doesn't have permission
                 if (!canViewReallocation) {
-                    url += `&filter[type]=budget_request`;
+                    data = data.filter(request => request.type !== 'reallocation');
                 }
 
-                const response = await axios.get(url);
-                setBudgetRequests(response.data.data);
+                setBudgetRequests(data);
                 setLastPage(response.data.meta?.last_page || 1);
             } catch (err) {
                 setError("Failed to fetch budget requests.");
@@ -157,10 +159,20 @@ const RequestBudgetTable = () => {
                                     {request.fiscal_period?.fiscal_year}
                                 </td>
                                 <td className="py-3 px-4">
-                                    <span className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap inline-block ${
-                                        request.type === 'reallocation' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                                    }`}>
-                                        {request.type === 'reallocation' ? 'Reallocation' : 'Budget Request'}
+                                    <span
+                                        className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap inline-block ${
+                                            request.type === 'reallocation'
+                                                ? 'bg-purple-100 text-purple-800'
+                                                : request.type === 'vat'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-blue-100 text-blue-800'
+                                        }`}
+                                    >
+                                        {request.type === 'reallocation'
+                                            ? 'Reallocation'
+                                            : request.type === 'vat'
+                                                ? 'VAT Budget'
+                                                : 'Budget Request'}
                                     </span>
                                 </td>
                                 <td className="py-3 px-4">
