@@ -56,7 +56,7 @@ const AccountsModal = ({
                         invoice_number: account.invoice_number || "",
                     };
                     setFormData(newFormData);
-                    // Fetch eligible payment orders for liabilities
+                    // Fetch eligible payment orders for liabilities (Account 2)
                     if (account.id === 2) {
                         setLoadingPaymentOrders(true);
                         try {
@@ -111,6 +111,67 @@ const AccountsModal = ({
                             setEligiblePaymentOrders(paymentOrderOptions);
                         } catch (e) {
                             console.error("Error fetching payment orders:", e);
+                            setEligiblePaymentOrders([]);
+                        }
+                        setLoadingPaymentOrders(false);
+                    }
+                    // Fetch eligible payment orders with unpaid VAT for VAT Receivable (Account 14)
+                    if (account.id === 14) {
+                        setLoadingPaymentOrders(true);
+                        try {
+                            const res = await axios.get("/api/v1/vat-receivable");
+                            const paymentOrders = res.data.data || [];
+                            
+                            const paymentOrderOptions = paymentOrders.map(po => ({
+                                id: po.payment_order_number,
+                                label: (
+                                    <span>
+                                        {po.payment_order_number}{" "}
+                                        <span className="text-xs font-bold text-red-600">
+                                            (VAT Unpaid: {po.vat_unpaid_amount.toFixed(2)} SAR)
+                                        </span>
+                                    </span>
+                                ),
+                                value: po.payment_order_number,
+                                vat_unpaid: po.vat_unpaid_amount,
+                                vat_amount: po.vat_amount,
+                                vat_refunded: po.vat_refunded_amount,
+                            }));
+                            
+                            setEligiblePaymentOrders(paymentOrderOptions);
+                        } catch (e) {
+                            console.error("Error fetching VAT receivable payment orders:", e);
+                            setEligiblePaymentOrders([]);
+                        }
+                        setLoadingPaymentOrders(false);
+                    }
+                    // Fetch eligible payment orders with VAT available for credit for VAT Paid (Account 8)
+                    if (account.id === 8) {
+                        setLoadingPaymentOrders(true);
+                        try {
+                            const res = await axios.get("/api/v1/vat-paid");
+                            const paymentOrders = res.data.data || [];
+                            
+                            const paymentOrderOptions = paymentOrders.map(po => ({
+                                id: po.payment_order_number,
+                                label: (
+                                    <span>
+                                        {po.payment_order_number}{" "}
+                                        <span className="text-xs font-bold text-green-600">
+                                            (VAT Available for Credit: {po.vat_available_for_credit.toFixed(2)} SAR)
+                                        </span>
+                                    </span>
+                                ),
+                                value: po.payment_order_number,
+                                vat_available_for_credit: po.vat_available_for_credit,
+                                vat_paid: po.vat_paid,
+                                vat_debited: po.vat_debited,
+                                vat_credited: po.vat_credited,
+                            }));
+                            
+                            setEligiblePaymentOrders(paymentOrderOptions);
+                        } catch (e) {
+                            console.error("Error fetching VAT paid payment orders:", e);
                             setEligiblePaymentOrders([]);
                         }
                         setLoadingPaymentOrders(false);
@@ -240,10 +301,12 @@ const AccountsModal = ({
         // Special handling for Account ID 2 (Liabilities)
         if (isEdit && account && account.id === 2) {
             if (name === "credit_amount") {
-                // Disable credit field for Liabilities account
-                return;
+                // Disable credit field for Liabilities account (Account 2)
+                if (isEdit && account && account.id === 2) {
+                    return;
+                }
             } else if (name === "debit_amount") {
-                // Allow debit field for Liabilities account
+                // Allow debit field for Liabilities account (Account 2) and VAT Receivable account (Account 14)
                 const numericValue = value.replace(/[^0-9.]/g, "");
                 const parts = numericValue.split(".");
                 const formattedValue =
@@ -297,13 +360,14 @@ const AccountsModal = ({
                     debit_amount: formattedValue ? "" : formData.debit_amount,
                 });
             }
-        } else if (name === "debit_amount") {
-            // Temporarily disable debit field in edit mode (except for Liabilities account)
-            if (isEdit && account && account.id !== 2) {
-                return; // Don't allow changes to debit field in edit mode for other accounts
-            }
+            } else if (name === "debit_amount") {
+                // Temporarily disable debit field in edit mode (except for Liabilities account and VAT Receivable account)
+                if (isEdit && account && account.id !== 2 && account.id !== 14) {
+                    return; // Don't allow changes to debit field in edit mode for other accounts
+                }
 
             // If user enters debit, clear and disable credit
+            // For Account 2 and Account 14, the debit_amount is the increment amount (not total)
             const numericValue = value.replace(/[^0-9.]/g, "");
             const parts = numericValue.split(".");
             const formattedValue =
@@ -370,21 +434,44 @@ const AccountsModal = ({
                 "Debit amount must be a valid number";
         }
 
-        // Special validation for Account ID 2 (Liabilities)
-        if (isEdit && account && account.id === 2) {
-            // For Liabilities account, debit amount is required
+        // Special validation for Account ID 2 (Liabilities) and Account ID 14 (VAT Receivable)
+        if (isEdit && account && (account.id === 2 || account.id === 14)) {
+            // For Liabilities account and VAT Receivable account, debit amount is required
             if (!formData.debit_amount || parseFloat(formData.debit_amount) <= 0) {
-                validationErrors.debit_amount = "Debit amount is required and must be greater than 0 for Liabilities account";
+                validationErrors.debit_amount = `Debit amount is required and must be greater than 0 for ${account.id === 2 ? 'Liabilities' : 'VAT Receivable'} account`;
             }
             
-            // Invoice number is required for Liabilities account
+            // Invoice number (payment order number) is required for both accounts
             if (!formData.invoice_number || formData.invoice_number.trim() === '') {
-                validationErrors.invoice_number = "Invoice number is required for Liabilities account debit operations";
+                validationErrors.invoice_number = `Reference number is required for ${account.id === 2 ? 'Liabilities' : 'VAT Receivable'} account debit operations`;
             }
             
-            // Credit amount should not be provided for Liabilities account
+            // Credit amount should not be provided for these accounts
             if (formData.credit_amount && parseFloat(formData.credit_amount) > 0) {
-                validationErrors.credit_amount = "Cannot credit Liabilities account. Only debit operations are allowed";
+                validationErrors.credit_amount = `Cannot credit ${account.id === 2 ? 'Liabilities' : 'VAT Receivable'} account. Only debit operations are allowed`;
+            }
+        } else if (isEdit && account && account.id === 8) {
+            // Special validation for Account ID 8 (VAT Paid) - credit amount is required
+            if (!formData.credit_amount || parseFloat(formData.credit_amount) <= 0) {
+                validationErrors.credit_amount = 'Credit amount is required and must be greater than 0 for VAT Paid account';
+            }
+            
+            // Invoice number (payment order number) is required
+            if (!formData.invoice_number || formData.invoice_number.trim() === '') {
+                validationErrors.invoice_number = 'Reference number is required for VAT Paid account credit operations';
+            }
+            
+            // Debit amount should not be provided for Account 8
+            if (formData.debit_amount && parseFloat(formData.debit_amount) > 0) {
+                validationErrors.debit_amount = 'Cannot debit VAT Paid account. Only credit operations are allowed (VAT refunds from government)';
+            }
+            
+            // Validate credit amount doesn't exceed available VAT
+            if (formData.invoice_number && formData.credit_amount) {
+                const selectedPO = eligiblePaymentOrders.find(po => po.value === formData.invoice_number);
+                if (selectedPO && parseFloat(formData.credit_amount) > selectedPO.vat_available_for_credit) {
+                    validationErrors.credit_amount = `Credit amount cannot exceed available VAT for credit (${selectedPO.vat_available_for_credit.toFixed(2)} SAR)`;
+                }
             }
         } else {
             // Only one of credit or debit can be filled (for other accounts)
@@ -440,7 +527,7 @@ const AccountsModal = ({
                 cleanFormData = {
                     ...formData,
                     credit_amount: formData.credit_amount
-                        ? isEdit && account
+                        ? isEdit && account && account.id !== 8
                             ? formData._calculated_credit_amount
                             : parseFloat(formData.credit_amount)
                         : null,
@@ -450,10 +537,29 @@ const AccountsModal = ({
                     attachment: attachmentPath,
                     original_name: originalName,
                 };
-                if (cleanFormData.debit_amount) cleanFormData.credit_amount = null;
+                // Don't clear credit_amount for Account 8 - it uses credit operations
+                if (cleanFormData.debit_amount && (!isEdit || !account || account.id !== 8)) {
+                    cleanFormData.credit_amount = null;
+                }
             }
 
             if (isEdit && account) {
+                // Special handling for Account 8 (VAT Paid) - credit amount should be increment, not replacement
+                // For Account 8, we always send the raw credit_amount value (what user typed) as the increment
+                if (account.id === 8) {
+                    // For Account 8, credit_amount should be the increment amount (what user entered), not the total
+                    // So we use the raw formData.credit_amount value, not _calculated_credit_amount
+                    if (formData.credit_amount) {
+                        cleanFormData.credit_amount = parseFloat(formData.credit_amount); // This is the increment amount
+                    } else {
+                        delete cleanFormData.credit_amount;
+                    }
+                    // Ensure debit_amount is not sent for Account 8
+                    if (cleanFormData.debit_amount !== undefined) {
+                        delete cleanFormData.debit_amount;
+                    }
+                }
+                
                 // Simplified Edit: Just update the account and its associated chart of account
                 const updatedAccountData = {
                     ...cleanFormData,
@@ -473,6 +579,73 @@ const AccountsModal = ({
 
                 try {
                     await onSave(updatedAccountData);
+                    
+                    // If Account 14 was updated, refresh the VAT receivable list for next time
+                    if (account && account.id === 14) {
+                        // Refetch VAT receivable payment orders to update unpaid amounts
+                        try {
+                            const res = await axios.get("/api/v1/vat-receivable");
+                            const paymentOrders = res.data.data || [];
+                            const paymentOrderOptions = paymentOrders.map(po => ({
+                                id: po.payment_order_number,
+                                label: (
+                                    <span>
+                                        {po.payment_order_number}{" "}
+                                        <span className="text-xs font-bold text-red-600">
+                                            (VAT Unpaid: {po.vat_unpaid_amount.toFixed(2)} SAR)
+                                        </span>
+                                    </span>
+                                ),
+                                value: po.payment_order_number,
+                                vat_unpaid: po.vat_unpaid_amount,
+                            }));
+                            setEligiblePaymentOrders(paymentOrderOptions);
+                        } catch (e) {
+                            console.error("Error refreshing VAT receivable list:", e);
+                        }
+                    }
+                    // If Account 8 was updated, refresh the VAT paid list immediately to show updated amounts
+                    if (account && account.id === 8) {
+                        // Wait longer for backend transaction to commit and database to update
+                        await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 second delay to ensure transaction is committed
+                        try {
+                            // Force a fresh fetch by adding a timestamp to prevent caching
+                            const res = await axios.get(`/api/v1/vat-paid?t=${Date.now()}`);
+                            const paymentOrders = res.data.data || [];
+                            const paymentOrderOptions = paymentOrders.map(po => ({
+                                id: po.payment_order_number,
+                                label: (
+                                    <span>
+                                        {po.payment_order_number}{" "}
+                                        <span className="text-xs font-bold text-green-600">
+                                            (VAT Available for Credit: {po.vat_available_for_credit.toFixed(2)} SAR)
+                                        </span>
+                                    </span>
+                                ),
+                                value: po.payment_order_number,
+                                vat_available_for_credit: po.vat_available_for_credit,
+                                vat_paid: po.vat_paid,
+                                vat_debited: po.vat_debited,
+                                vat_credited: po.vat_credited,
+                            }));
+                            setEligiblePaymentOrders(paymentOrderOptions);
+                            
+                            // Also update the selected payment order's label if it's still selected
+                            if (formData.invoice_number) {
+                                const selectedPO = paymentOrderOptions.find(po => po.value === formData.invoice_number);
+                                if (selectedPO) {
+                                    // The dropdown will automatically update with the new options
+                                    console.log('Updated VAT available for credit:', selectedPO.vat_available_for_credit);
+                                    console.log('All payment order options:', paymentOrderOptions);
+                                } else {
+                                    console.log('Selected payment order not found in updated list:', formData.invoice_number);
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Error refreshing VAT paid list:", e);
+                        }
+                    }
+                    
                     onClose(); // Only close on success
                 } catch (error) {
                     // Handle errors from the parent component
@@ -683,6 +856,29 @@ const AccountsModal = ({
                                     disabled={false}
                                     allowCustomValue={false} // Enforce dropdown-only
                                 />
+                            ) : isEdit && account && account.id === 8 ? (
+                                <SelectFloating
+                                    label="Reference Number"
+                                    name="invoice_number"
+                                    value={formData.invoice_number}
+                                    onChange={handleChange}
+                                    options={
+                                        eligiblePaymentOrders.length > 0
+                                            ? eligiblePaymentOrders
+                                            : [
+                                                {
+                                                    id: "",
+                                                    label: "No payment orders available",
+                                                    value: "",
+                                                    disabled: true,
+                                                },
+                                            ]
+                                    }
+                                    loading={loadingPaymentOrders}
+                                    placeholder="Select Payment Order"
+                                    disabled={false}
+                                    allowCustomValue={false} // Enforce dropdown-only
+                                />
                             ) : isEdit && account && account.id === 12 ? (
                                 <SelectFloating
                                     label="Reference Number"
@@ -705,6 +901,29 @@ const AccountsModal = ({
                                     placeholder="Select Maharat Invoice"
                                     // Keep dropdown usable even when there are no references;
                                     // the options will show a disabled "No Maharat invoices available" entry.
+                                    disabled={false}
+                                    allowCustomValue={false}
+                                />
+                            ) : isEdit && account && account.id === 14 ? (
+                                <SelectFloating
+                                    label="Reference Number"
+                                    name="invoice_number"
+                                    value={formData.invoice_number}
+                                    onChange={handleChange}
+                                    options={
+                                        eligiblePaymentOrders.length > 0
+                                            ? eligiblePaymentOrders
+                                            : [
+                                                {
+                                                    id: "",
+                                                    label: "No payment orders with unpaid VAT available",
+                                                    value: "",
+                                                    disabled: true,
+                                                },
+                                            ]
+                                    }
+                                    loading={loadingPaymentOrders}
+                                    placeholder="Select Payment Order"
                                     disabled={false}
                                     allowCustomValue={false}
                                 />
@@ -755,11 +974,13 @@ const AccountsModal = ({
                             </>
                         ) : (
                             <>
-                                {/* Credit Amount: Only show if not Liabilities (id !== 2) */}
-                                {!(isEdit && account && account.id === 2) && (
+                                {/* Credit Amount: Show for Account 8 (VAT Paid), hide for Account 2 and 14 */}
+                                {!(isEdit && account && (account.id === 2 || account.id === 14)) && (
                                     <InputFloating
                                         label={
-                                            isEdit && account
+                                            isEdit && account && account.id === 8
+                                                ? "Credit Amount"
+                                                : isEdit && account
                                                 ? "Credit Amount Increase"
                                                 : "Credit Amount"
                                         }
@@ -769,13 +990,14 @@ const AccountsModal = ({
                                         onChange={handleChange}
                                         error={errors.credit_amount}
                                         readOnly={isEdit && account && account.id === 2}
+                                        disabled={isEdit && account && account.id !== 2 && account.id !== 14 && account.id !== 8}
                                     />
                                 )}
-                                {/* Debit Amount: Only show if not Cash (id !== 12) in edit mode */}
-                                {!(isEdit && account && account.id === 12) && (
+                                {/* Debit Amount: Show for Liabilities (id === 2) and VAT Receivable (id === 14), but not Cash (id === 12) or VAT Paid (id === 8) */}
+                                {!(isEdit && account && (account.id === 12 || account.id === 8)) && (
                                     <InputFloating
                                         label={
-                                            isEdit && account && account.id === 2
+                                            isEdit && account && (account.id === 2 || account.id === 14)
                                                 ? "Debit Amount"
                                                 : "Debit Amount"
                                         }
@@ -784,7 +1006,7 @@ const AccountsModal = ({
                                         value={formData.debit_amount}
                                         onChange={handleChange}
                                         error={errors.debit_amount}
-                                        disabled={isEdit && account && account.id !== 2}
+                                        disabled={isEdit && account && account.id !== 2 && account.id !== 14}
                                     />
                                 )}
                             </>

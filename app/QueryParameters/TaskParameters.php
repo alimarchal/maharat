@@ -117,6 +117,7 @@ class TaskParameters
         'budget',
         'budget.department',
         'budget.costCenter',
+        'budget.requestBudget',
         'budget_approval_transaction',
         'request_budget',
         'request_budget.department',

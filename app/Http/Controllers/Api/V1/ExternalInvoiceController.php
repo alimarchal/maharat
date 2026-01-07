@@ -69,28 +69,31 @@ class ExternalInvoiceController extends Controller
             // Create the invoice
             $invoice = ExternalInvoice::create($data);
 
-            // Update account ID 2 with credit_amount = credit_amount + (amount + vat_amount)
+            // Accounting entries for external invoice:
+            // Credit: Liabilities (Account 2) with total amount
+            // Debit: Cost of Purchases (Account 5) with base amount (restored to original logic)
+            // Note: Account 14 (VAT Receivable) is NOT automatically updated - user must manually edit it
             $totalAmount = $data['amount'] + $data['vat_amount'];
             $amount = $data['amount'];
             $vatAmount = $data['vat_amount'];
             
-            // Log the account update for debugging
-            \Log::info('Updating account ID 2', [
+            \Log::info('Creating external invoice accounting entries', [
                 'invoice_id' => $invoice->id,
-                'amount' => $amount,
+                'base_amount' => $amount,
                 'vat_amount' => $vatAmount,
-                'total_amount' => $totalAmount
+                'total_amount' => $totalAmount,
+                'accounting' => [
+                    'credit_account_2' => $totalAmount,
+                    'debit_account_5' => $amount,
+                    'note' => 'Account 14 is NOT automatically updated - user must manually edit it'
+                ]
             ]);
             
-            $accountUpdate = DB::table('accounts')
+            // Credit Liabilities (Account 2) with total amount
+            DB::table('accounts')
                 ->where('id', 2)
                 ->increment('credit_amount', $totalAmount);
                 
-            \Log::info('Account update result', [
-                'rows_affected' => $accountUpdate,
-                'account_id' => 2
-            ]);
-
             TransactionFlowService::recordTransactionFlow(
                 2, // account_id
                 'credit',
@@ -98,30 +101,34 @@ class ExternalInvoiceController extends Controller
                 'external_invoice',
                 $invoice->id,
                 [],
-                'External invoice created',
+                'External invoice created - Liabilities increased',
                 $invoice->invoice_id,
                 now()->toDateString(),
                 $invoice->attachment_path,
                 $invoice->original_name
             );
 
-            // === NEW: Credit account ID 5 (Cost of Purchases) with just the amount (excluding VAT) ===
+            // Debit Cost of Purchases (Account 5) with base amount (original logic - restored)
             DB::table('accounts')
                 ->where('id', 5)
-                ->increment('credit_amount', $amount);
+                ->increment('debit_amount', $amount);
+                
             TransactionFlowService::recordTransactionFlow(
                 5, // account_id
-                'credit',
+                'debit',
                 $amount,
                 'external_invoice',
                 $invoice->id,
                 [],
-                'Cost of Purchases credited for external invoice',
+                'Cost of Purchases debited for external invoice (base amount)',
                 $invoice->invoice_id,
                 now()->toDateString(),
                 $invoice->attachment_path,
                 $invoice->original_name
             );
+
+            // Note: Account 14 (VAT Receivable) is NOT automatically updated
+            // It should only be updated when the user manually edits it through the Accounts modal
 
             DB::commit();
 

@@ -115,7 +115,7 @@ class BalanceSheetController extends Controller
             $fromDate = Carbon::createFromDate($year, 1, 1)->toDateString();
             $toDate = Carbon::createFromDate($year, 12, 31)->toDateString();
 
-            // Current Assets: Assets (1), Account Receivable (11), Cash (12)
+            // Current Assets: Assets (1), Account Receivable (11), Cash (12), VAT Receivables On Maharat Invoice (13), VAT Receivable on Purchases (14)
             $currentAssets = [];
             // Assets (id 1): sum of debits - sum of credits
             $debits = TransactionFlow::where('account_id', 1)
@@ -165,6 +165,41 @@ class BalanceSheetController extends Controller
             $label = $account ? $account->name : 'Account 12';
             $currentAssets[] = [
                 'account_id' => 12,
+                'category' => $label,
+                'total' => $balance
+            ];
+            // VAT Receivables On Maharat Invoice (id 13): sum of debits - sum of credits (asset account)
+            $debits = TransactionFlow::where('account_id', 13)
+                ->where('transaction_type', 'debit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount');
+            $credits = TransactionFlow::where('account_id', 13)
+                ->where('transaction_type', 'credit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount');
+            $balance = $debits - $credits;
+            $account = \App\Models\Account::find(13);
+            $label = $account ? $account->name : 'Account 13';
+            $currentAssets[] = [
+                'account_id' => 13,
+                'category' => $label,
+                'total' => $balance
+            ];
+            
+            // VAT Receivable on Purchases (id 14): sum of debits - sum of credits (asset account)
+            $debits = TransactionFlow::where('account_id', 14)
+                ->where('transaction_type', 'debit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount');
+            $credits = TransactionFlow::where('account_id', 14)
+                ->where('transaction_type', 'credit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount');
+            $balance = $debits - $credits;
+            $account = \App\Models\Account::find(14);
+            $label = $account ? $account->name : 'Account 14';
+            $currentAssets[] = [
+                'account_id' => 14,
                 'category' => $label,
                 'total' => $balance
             ];
@@ -258,11 +293,17 @@ class BalanceSheetController extends Controller
                 ->whereBetween('transaction_date', [$fromDate, $toDate])
                 ->sum('amount') ?? 0);
 
-            // Expenses: sum of credit for [5,6,7]
-            $expenses = (float) (TransactionFlow::whereIn('account_id', [5,6,7])
+            // Expenses: sum of debits minus credits for [5,6,7,8] (expenses increase with debits)
+            // Account 8 (VAT Paid): debits (VAT paid) increase expenses, credits (VAT refunded) decrease expenses
+            $expenseDebits = (float) (TransactionFlow::whereIn('account_id', [5,6,7,8])
+                ->where('transaction_type', 'debit')
+                ->whereBetween('transaction_date', [$fromDate, $toDate])
+                ->sum('amount') ?? 0);
+            $expenseCredits = (float) (TransactionFlow::whereIn('account_id', [5,6,7,8])
                 ->where('transaction_type', 'credit')
                 ->whereBetween('transaction_date', [$fromDate, $toDate])
                 ->sum('amount') ?? 0);
+            $expenses = $expenseDebits - $expenseCredits;
 
             // Regular Funds: paid revenue - expenses
             $regularFunds = $paidRevenue - $expenses;

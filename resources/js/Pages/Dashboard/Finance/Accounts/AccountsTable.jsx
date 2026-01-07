@@ -259,7 +259,7 @@ const AccountsTable = () => {
                                         // Define accounts that should NOT have an Edit button
                                         const nonEditable = [
                                             'Liabilities', 'Revenue/Income', 'Cost of Purchases', 
-                                            'VAT Paid (on purchases)', 'VAT Collected (on Maharat invoices)',
+                                            'VAT Collected (on Maharat invoices)',
                                             'Account Receivable', 'Revenue', 'VAT Receivables (On Maharat Invoice)'
                                         ];
 
@@ -269,7 +269,7 @@ const AccountsTable = () => {
                                             'Cost of Purchases', 'Operating Expenses', 'Non-Operating Expenses',
                                             'VAT Paid (on purchases)', 'VAT Collected (on Maharat invoices)',
                                             'Account Receivable', 'Revenue', 'VAT Receivables (On Maharat Invoice)',
-                                            'Accounts Payable'
+                                            'VAT Receivable (On Purchases)', 'Accounts Payable'
                                         ];
 
                                         // Define accounts that can only be edited (no delete)

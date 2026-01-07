@@ -311,6 +311,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/budget/details/{id}', function ($id) {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/ViewBudget','budgetId' => $id]);
     })->name('budget.view');
+    Route::get('/budget/transactions/{requestBudgetId}', function ($requestBudgetId) {
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/BudgetTransactionDetails','requestBudgetId' => $requestBudgetId]);
+    })->name('budget.transactions');
 
     Route::get('/budget/fiscal-years', function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/Budget/EditFiscalPeriod']);
@@ -322,6 +325,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/request-budgets/create', function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/BudgetRequestForm']);
     })->name('requestBudget.create');
+    Route::get('/request-budgets/vat/create', function () {
+        return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/VatBudgetRequestForm']);
+    })->name('requestBudget.vat.create');
     Route::get('/request-budgets/reallocate', function () {
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/ReallocateBudgetForm']);
     })->name('requestBudget.reallocate');
@@ -336,6 +342,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Route to appropriate form based on type
         if ($requestBudget->type === 'reallocation') {
             return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/ReallocateBudgetForm', 'budgetRequestId' => $id]);
+        }
+
+        if ($requestBudget->type === 'vat') {
+            return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/VatBudgetRequestForm', 'budgetRequestId' => $id]);
         }
         
         return Inertia::render('Dashboard', ['page' => 'BudgetAndAccounts/RequestABudget/BudgetRequestForm', 'budgetRequestId' => $id]);
