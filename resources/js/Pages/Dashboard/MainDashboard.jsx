@@ -264,11 +264,14 @@ export default function MainDashboard({ roles, permissions }) {
     const [quotationsRfqCount, setQuotationsRfqCount] = useState(0);
     const [purchaseOrdersRfqCount, setPurchaseOrdersRfqCount] = useState(0);
     const [unpaidInvoicesCount, setUnpaidInvoicesCount] = useState(0);
+    const [availablePurchaseOrdersCount, setAvailablePurchaseOrdersCount] = useState(0);
     const [approvedItemsCount, setApprovedItemsCount] = useState(0);
     
     // Finance Center notification counts
     const [maharatInvoicesCount, setMaharatInvoicesCount] = useState(0);
     const [paymentOrdersCount, setPaymentOrdersCount] = useState(0);
+    const [accountReceivablesCount, setAccountReceivablesCount] = useState(0);
+    const [accountPayablesCount, setAccountPayablesCount] = useState(0);
     
     const [loading, setLoading] = useState(true);
 
@@ -538,6 +541,36 @@ export default function MainDashboard({ roles, permissions }) {
         fetchUnpaidInvoicesCount();
     }, []);
 
+    // Fetch available purchase orders count (approved POs without external invoices)
+    useEffect(() => {
+        const fetchAvailablePurchaseOrdersCount = async () => {
+            try {
+                const [poRes, extInvRes] = await Promise.all([
+                    fetch("/api/v1/purchase-orders?filter[status]=Approved&sort=-created_at"),
+                    fetch("/api/v1/external-invoices")
+                ]);
+                const poData = await poRes.json();
+                const extInvData = await extInvRes.json();
+
+                if (poRes.ok && extInvRes.ok) {
+                    const allPOs = poData.data || [];
+                    const usedPOIds = (extInvData.data || [])
+                        .filter((invoice) => invoice.purchase_order_id)
+                        .map((invoice) => String(invoice.purchase_order_id));
+
+                    const availablePOs = allPOs.filter((po) => !usedPOIds.includes(String(po.id)));
+                    setAvailablePurchaseOrdersCount(availablePOs.length);
+                } else {
+                    setAvailablePurchaseOrdersCount(0);
+                }
+            } catch (err) {
+                console.error("Error fetching available purchase orders count:", err);
+                setAvailablePurchaseOrdersCount(0);
+            }
+        };
+        fetchAvailablePurchaseOrdersCount();
+    }, []);
+
     // Fetch approved items count (same as approvedCount in RequestItemsContext)
     useEffect(() => {
         const fetchApprovedItemsCount = async () => {
@@ -614,6 +647,36 @@ export default function MainDashboard({ roles, permissions }) {
         fetchPaymentOrdersCount();
     }, []);
 
+    // Fetch Account Receivables count for finance notifications
+    useEffect(() => {
+        const fetchAccountReceivablesCount = async () => {
+            try {
+                // TODO: Update with actual API endpoint when available
+                // For now, set to 0 as placeholder
+                setAccountReceivablesCount(0);
+            } catch (err) {
+                console.error("Error fetching account receivables count:", err);
+                setAccountReceivablesCount(0);
+            }
+        };
+        fetchAccountReceivablesCount();
+    }, []);
+
+    // Fetch Account Payables count for finance notifications
+    useEffect(() => {
+        const fetchAccountPayablesCount = async () => {
+            try {
+                // TODO: Update with actual API endpoint when available
+                // For now, set to 0 as placeholder
+                setAccountPayablesCount(0);
+            } catch (err) {
+                console.error("Error fetching account payables count:", err);
+                setAccountPayablesCount(0);
+            }
+        };
+        fetchAccountPayablesCount();
+    }, []);
+
     // Use the hasPermission from usePermissions hook which includes user overrides
 
     // Filter dropdown items based on user permissions
@@ -653,7 +716,7 @@ export default function MainDashboard({ roles, permissions }) {
             text: "External Invoices",
             icon: faFileAlt,
             onClick: () => router.visit("/external-invoices"),
-            notificationCount: unpaidInvoicesCount,
+            notificationCount: availablePurchaseOrdersCount,
             requiredPermission: "view_invoices",
         },
     ];
@@ -685,12 +748,14 @@ export default function MainDashboard({ roles, permissions }) {
             text: "Account Receivables",
             icon: faFileInvoiceDollar,
             onClick: () => router.visit("/account-receivables"),
+            notificationCount: accountReceivablesCount,
             requiredPermission: "view_account_receivables",
         },
         {
             text: "Account Payables",
             icon: faFileInvoice,
             onClick: () => router.visit("/account-payables"),
+            notificationCount: accountPayablesCount,
             requiredPermission: "view_account_payables",
         },
     ];
@@ -811,7 +876,7 @@ export default function MainDashboard({ roles, permissions }) {
         if (hasPermission("view_rfqs")) total += pendingRfqRequestsCount;
         if (hasPermission("view_quotations")) total += quotationsRfqCount;
         if (hasPermission("view_purchase_orders")) total += purchaseOrdersRfqCount;
-        if (hasPermission("view_invoices")) total += unpaidInvoicesCount;
+        if (hasPermission("view_invoices")) total += availablePurchaseOrdersCount;
         return total;
     })();
     
@@ -826,10 +891,15 @@ export default function MainDashboard({ roles, permissions }) {
     })();
 
     // Calculate total finance notifications based on user permissions
+    // Includes: Maharat Invoices, Accounts (maharatInvoicesCount + paymentOrdersCount), 
+    // Payment Orders, Account Receivables, Account Payables
     const totalFinanceNotifications = (() => {
         let total = 0;
         if (hasPermission("view_maharat_invoices")) total += maharatInvoicesCount;
+        if (hasPermission("view_accounts")) total += (maharatInvoicesCount + paymentOrdersCount);
         if (hasPermission("view_payment_orders")) total += paymentOrdersCount;
+        if (hasPermission("view_account_receivables")) total += accountReceivablesCount;
+        if (hasPermission("view_account_payables")) total += accountPayablesCount;
         return total;
     })();
 
