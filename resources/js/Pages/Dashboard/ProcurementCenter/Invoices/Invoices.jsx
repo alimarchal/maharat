@@ -85,6 +85,7 @@ const InvoicesTable = () => {
     const [isEdit, setIsEdit] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [viewInvoice, setViewInvoice] = useState(null);
+    const [availablePurchaseOrdersCount, setAvailablePurchaseOrdersCount] = useState(0);
 
     const fetchInvoices = async () => {
         setLoading(true);
@@ -125,6 +126,32 @@ const InvoicesTable = () => {
         fetchSuppliers();
     }, [currentPage]);
 
+    // Fetch available purchase orders count (approved POs without external invoices)
+    useEffect(() => {
+        const fetchAvailablePurchaseOrdersCount = async () => {
+            try {
+                const [poRes, extInvRes] = await Promise.all([
+                    axios.get("/api/v1/purchase-orders?filter[status]=Approved&sort=-created_at"),
+                    axios.get("/api/v1/external-invoices")
+                ]);
+
+                if (poRes.data && extInvRes.data) {
+                    const allPOs = poRes.data.data || [];
+                    const usedPOIds = (extInvRes.data.data || [])
+                        .filter((invoice) => invoice.purchase_order_id)
+                        .map((invoice) => String(invoice.purchase_order_id));
+
+                    const availablePOs = allPOs.filter((po) => !usedPOIds.includes(String(po.id)));
+                    setAvailablePurchaseOrdersCount(availablePOs.length);
+                }
+            } catch (error) {
+                console.error("Error fetching available purchase orders count:", error);
+                setAvailablePurchaseOrdersCount(0);
+            }
+        };
+        fetchAvailablePurchaseOrdersCount();
+    }, [invoices]); // Refresh when invoices change
+
     const handleAddInvoice = () => {
         setIsEdit(false);
         setSelectedInvoice(null);
@@ -139,7 +166,8 @@ const InvoicesTable = () => {
 
     const handleSaveInvoice = async (formData) => {
         // The modal already handles the API call, just refresh the data
-                await fetchInvoices();
+        await fetchInvoices();
+        // The count will be updated automatically via useEffect dependency on invoices
     };
 
     const handleDelete = async (id) => {
@@ -227,9 +255,14 @@ const InvoicesTable = () => {
                 {hasPermission("add_invoice") && (
                     <button
                         onClick={handleAddInvoice}
-                        className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium"
+                        className="bg-[#009FDC] text-white px-7 py-3 rounded-full text-xl font-medium relative"
                     >
                         Add Invoice
+                        {availablePurchaseOrdersCount > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">
+                                {availablePurchaseOrdersCount > 99 ? '99+' : availablePurchaseOrdersCount}
+                            </span>
+                        )}
                     </button>
                 )}
             </div>
